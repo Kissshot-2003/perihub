@@ -1,0 +1,18 @@
+[workspace]
+resolver = "3"
+members = ["crates/perihub-core", "crates/perihub-cli", "app/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+perihub-core = { path = "crates/perihub-core" }
+# Su Linux usiamo hidraw: libusb staccherebbe il driver del kernel e tastiera/mouse smetterebbero di funzionare.
+hidapi = { version = "2.6", default-features = false, features = ["linux-static-hidraw"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+log = "0.4"
+dirs = "6"
