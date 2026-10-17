@@ -1,0 +1,22 @@
+[package]
+name = "perihub-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "perihub"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.7.3", features = [] }
+
+[dependencies]
+perihub-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+env_logger = "0.11"
+tauri = { version = "2.12.4", features = ["tray-icon"] }
+tauri-plugin-autostart = "2.7.0"
+tauri-plugin-single-instance = "2.5.4"

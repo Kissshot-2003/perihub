@@ -1,0 +1,8 @@
+# PeriHub: accesso alle interfacce HID di configurazione per l'utente con sessione attiva.
+# Installazione manuale:
+#   sudo cp 70-perihub.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
+
+# SteelSeries Apex 3 TKL
+KERNEL=="hidraw*", ATTRS{idVendor}=="1038", ATTRS{idProduct}=="1622", TAG+="uaccess"
+# Logitech G502 HERO
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c08b", TAG+="uaccess"
