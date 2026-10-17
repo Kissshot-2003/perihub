@@ -50,8 +50,8 @@ fn main() {
             let start_hidden = hidden_requested || config.start_hidden;
             app.manage(AppState { manager, config: Mutex::new(config) });
 
-            let open = MenuItem::with_id(app, "open", "Apri PeriHub", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Esci", true, None::<&str>)?;
+            let open = MenuItem::with_id(app, "open", "Open PeriHub", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &quit])?;
             let mut tray = TrayIconBuilder::with_id("main")
                 .tooltip("PeriHub")
@@ -115,5 +115,5 @@ fn main() {
             commands::app_quit,
         ])
         .run(tauri::generate_context!())
-        .expect("errore durante l'avvio di PeriHub");
+        .expect("failed to start PeriHub");
 }

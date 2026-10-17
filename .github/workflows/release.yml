@@ -1,6 +1,6 @@
 name: Release
 
-# Un tag vX.Y.Z crea una release in bozza con gli installer per Windows e Linux.
+# A vX.Y.Z tag creates a draft release with Windows and Linux installers.
 on:
   push:
     tags: ["v*"]
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Pacchetti (${{ matrix.os }})
+    name: Bundles (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Dipendenze di sistema (Linux)
+      - name: System dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -35,7 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
-      - name: Dipendenze dell'interfaccia
+      - name: Frontend dependencies
         working-directory: app
         run: npm ci
 
@@ -46,6 +46,6 @@ jobs:
           projectPath: app
           tagName: ${{ github.ref_name }}
           releaseName: PeriHub ${{ github.ref_name }}
-          releaseBody: Vedi CHANGELOG.md.
+          releaseBody: See CHANGELOG.md.
           releaseDraft: true
           prerelease: false

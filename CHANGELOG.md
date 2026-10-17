@@ -2,26 +2,27 @@
 
 ## 0.1.0 — 2026-10-17
 
-Prima versione.
+First release.
 
 ### SteelSeries Apex 3 TKL
-- Illuminazione a 8 zone: statico, sfumatura, respiro, ciclo colori, onda, arcobaleno integrato, spento.
-- Luminosità 0–16, sincronizzata con SteelSeries + F11/F12.
-- Rimappatura dei tasti sul livello normale e sul livello SteelSeries, salvata nella memoria della tastiera.
-- Ripristino di tutti i tasti ai valori di fabbrica.
+- 8-zone lighting: static, gradient, breathing, color cycle, wave, built-in rainbow, off.
+- Brightness 0–16, kept in sync with SteelSeries + F11/F12.
+- Key remapping on the normal and SteelSeries layers, stored in the keyboard's memory.
+- ANSI (US), ISO (UK) and ISO (Italian) layouts in the key remapping view.
+- Reset all keys to factory settings.
 
 ### Logitech G502 HERO
-- 5 profili in memoria: attivazione, abilitazione, ripristino di fabbrica.
-- Fino a 5 livelli DPI (100–25600), livello predefinito e sniper, con prova dal vivo.
-- Polling 125/250/500/1000 Hz.
-- 11 pulsanti più il livello G-Shift: clic, tasti con modificatori, tasti multimediali, funzioni DPI e profilo.
-- LED del logo e dell'indicatore DPI: spento, fisso, respiro, ciclo colori, con anteprima dal vivo.
+- 5 onboard profiles: activate, enable/disable, restore factory settings.
+- Up to 5 DPI levels (100–25600), default and sniper level, with live preview.
+- Polling rate 125/250/500/1000 Hz.
+- 11 buttons plus the G-Shift layer: clicks, keys with modifiers, media keys, DPI and profile functions.
+- Logo and DPI indicator LEDs: off, fixed, breathing, color cycle, with live preview.
 
-### Programma
-- Rilevamento automatico di collegamento e scollegamento dei dispositivi.
-- Icona nell'area di notifica, avvio automatico all'accesso, istanza singola.
-- Copia di sicurezza automatica prima di ogni scrittura nella memoria dei dispositivi.
+### App
+- Automatic detection when devices are plugged in or unplugged.
+- System tray icon, autostart on login, single instance.
+- Automatic backup before every write to a device's memory.
 
-### Limiti noti
-- La versione Windows è compilata dalla CI ma non è ancora stata provata su un PC Windows.
-- Non ancora presenti: cambio profilo automatico per gioco, macro software, illuminazione reattiva, GameSense.
+### Known limitations
+- The Windows build is produced and tested by CI but has not been tried on a real Windows PC yet.
+- Not yet available: per-game profile switching, software macros, reactive lighting, GameSense.

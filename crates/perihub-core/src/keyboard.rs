@@ -66,7 +66,7 @@ impl KeyboardTask {
 
     pub fn set_brightness(&mut self, level: u8) -> Result<()> {
         if level > MAX_BRIGHTNESS {
-            return Err(Error::Invalid(format!("luminosità {level}")));
+            return Err(Error::Invalid(format!("brightness {level}")));
         }
         self.dev.set_brightness(level)
     }

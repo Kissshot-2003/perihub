@@ -18,7 +18,7 @@ fn crc_matches_device() {
     assert_eq!(crc_ccitt(&sector(0)[..254]), 0x5d20);
     assert_eq!(crc_ccitt(&sector(1)[..254]), 0x329a);
     for id in 0..=5 {
-        assert!(crc_is_valid(&sector(id)), "settore {id}");
+        assert!(crc_is_valid(&sector(id)), "sector {id}");
     }
     // I settori di fabbrica non hanno CRC.
     assert!(!crc_is_valid(&sector(0x0101)));
@@ -31,7 +31,7 @@ fn parse_then_apply_is_byte_identical() {
         let settings = ProfileSettings::parse(&original, BUTTONS).unwrap();
         let mut copy = original.clone();
         settings.apply(&mut copy).unwrap();
-        assert_eq!(copy, original, "profilo {id}");
+        assert_eq!(copy, original, "profile {id}");
     }
 }
 
@@ -75,7 +75,7 @@ fn edits_touch_only_their_fields() {
     assert!(crc_is_valid(&edited));
     let changed: Vec<usize> = (0..254).filter(|&i| edited[i] != original[i]).collect();
     let allowed = |i: usize| (3..13).contains(&i) || (44..48).contains(&i) || (208..219).contains(&i);
-    assert!(changed.iter().all(|&i| allowed(i)), "byte modificati fuori dai campi: {changed:?}");
+    assert!(changed.iter().all(|&i| allowed(i)), "bytes changed outside the edited fields: {changed:?}");
     assert_eq!(ProfileSettings::parse(&edited, BUTTONS).unwrap(), settings);
 }
 

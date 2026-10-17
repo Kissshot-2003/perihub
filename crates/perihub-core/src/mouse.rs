@@ -50,11 +50,11 @@ impl MouseTask {
     pub fn open(mut dev: HidppDevice) -> Result<Self> {
         let onboard = dev.onboard_info()?;
         if onboard.memory_model != 1 || onboard.macro_format != 1 {
-            return Err(Error::Protocol("memoria dei profili in un formato sconosciuto".into()));
+            return Err(Error::Protocol("onboard profile memory uses an unknown format".into()));
         }
         // Se un altro programma ha lasciato il mouse in modalità software, torniamo ai profili in memoria.
         if dev.onboard_mode()? != ONBOARD_MODE {
-            log::info!("mouse in modalità software: passo ai profili in memoria");
+            log::info!("mouse in host mode: switching to onboard profiles");
             dev.set_onboard_mode(ONBOARD_MODE)?;
         }
         let info = MouseInfo {
@@ -81,7 +81,7 @@ impl MouseTask {
         if (1..=self.profile_count()).contains(&number) {
             Ok(())
         } else {
-            Err(Error::Invalid(format!("profilo {number}")))
+            Err(Error::Invalid(format!("profile {number}")))
         }
     }
 
@@ -89,7 +89,7 @@ impl MouseTask {
         if self.info.writable {
             Ok(())
         } else {
-            Err(Error::Invalid("questo modello di mouse non è ancora supportato in scrittura".into()))
+            Err(Error::Invalid("saving is not supported on this mouse model yet".into()))
         }
     }
 
@@ -140,7 +140,7 @@ impl MouseTask {
         }
         let refs: Vec<(&str, &[u8])> = files.iter().map(|(n, d)| (n.as_str(), d.as_slice())).collect();
         let dir = write_backup("g502", label, &refs)?;
-        log::info!("copia di sicurezza del mouse in {}", dir.display());
+        log::info!("mouse backup saved to {}", dir.display());
         Ok(())
     }
 
@@ -149,7 +149,7 @@ impl MouseTask {
         let back = self.dev.read_sector(sector, self.sector_size())?;
         if back != data {
             return Err(Error::Protocol(format!(
-                "il settore {sector:#06x} riletto è diverso da quello scritto (copia di sicurezza in {})",
+                "sector {sector:#06x} read back differs from what was written (backup in {})",
                 crate::config::config_dir().join("backups").display()
             )));
         }
@@ -178,7 +178,7 @@ impl MouseTask {
         let other = others()
             .find(|&n| enabled[n as usize - 1])
             .or_else(|| others().next())
-            .ok_or_else(|| Error::Invalid("serve almeno un secondo profilo per ricaricare".into()))?;
+            .ok_or_else(|| Error::Invalid("a second profile is needed to reload settings".into()))?;
         self.dev.set_active_profile(other)?;
         self.dev.set_active_profile(active)
     }
@@ -199,7 +199,7 @@ impl MouseTask {
         let caps = &self.info.dpi;
         settings.validate(self.info.onboard.button_count as usize, caps.min, caps.max, &self.info.report_rates_ms)?;
         if caps.step > 0 && settings.dpi_levels.iter().any(|d| !(d - caps.min).is_multiple_of(caps.step)) {
-            return Err(Error::Invalid(format!("i DPI devono essere multipli di {}", caps.step)));
+            return Err(Error::Invalid(format!("DPI values must be multiples of {}", caps.step)));
         }
         let mut sector = self.read_profile_sector(number)?;
         settings.apply(&mut sector)?;
@@ -225,7 +225,7 @@ impl MouseTask {
         let mut flags = self.state()?.profiles.iter().map(|p| p.enabled).collect::<Vec<_>>();
         flags[number as usize - 1] = enabled;
         if !flags.iter().any(|&f| f) {
-            return Err(Error::Invalid("almeno un profilo deve restare attivo".into()));
+            return Err(Error::Invalid("at least one profile must stay enabled".into()));
         }
         let directory = profile::build_directory(&flags, self.sector_size() as usize);
         self.backup_all("directory")?;
@@ -258,7 +258,7 @@ impl MouseTask {
             .iter()
             .find(|z| z.index == zone)
             .cloned()
-            .ok_or_else(|| Error::Invalid(format!("zona LED {zone}")))?;
+            .ok_or_else(|| Error::Invalid(format!("LED zone {zone}")))?;
         self.dev.preview_led_effect(&zone, effect)
     }
 }

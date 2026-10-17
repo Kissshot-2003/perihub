@@ -180,7 +180,7 @@ pub fn app_get_settings(app: AppHandle, state: State<'_, AppState>) -> AppSettin
 pub fn app_set_settings(app: AppHandle, state: State<'_, AppState>, settings: AppSettings) -> CmdResult<AppSettings> {
     let launcher = app.autolaunch();
     let result = if settings.autostart { launcher.enable() } else { launcher.disable() };
-    result.map_err(|e| format!("avvio automatico: {e}"))?;
+    result.map_err(|e| format!("autostart: {e}"))?;
     let mut config = state.config.lock().unwrap();
     config.start_hidden = settings.start_hidden;
     config.save().map_err(|e| e.to_string())?;

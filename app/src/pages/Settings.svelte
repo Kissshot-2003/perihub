@@ -25,61 +25,61 @@
   }
 </script>
 
-<h1>Impostazioni</h1>
+<h1>Settings</h1>
 
 <div class="col gap">
   {#if error}<div class="notice error">{error}</div>{/if}
 
   <div class="card col">
-    <h2>Avvio</h2>
+    <h2>Startup</h2>
     {#if settings}
       <label class="row">
         <input type="checkbox" checked={settings.autostart}
           onchange={(e) => update({ autostart: (e.target as HTMLInputElement).checked })} />
-        Avvia PeriHub all'accesso (nascosto nell'area di notifica)
+        Start PeriHub when I log in (hidden in the system tray)
       </label>
       <label class="row">
         <input type="checkbox" checked={settings.start_hidden}
           onchange={(e) => update({ start_hidden: (e.target as HTMLInputElement).checked })} />
-        Avvia sempre nascosto
+        Always start hidden
       </label>
     {/if}
     <p class="muted small">
-      Chiudere la finestra non chiude PeriHub: resta attivo per gli effetti di luce della tastiera e per
-      riapplicare i colori quando la ricolleghi. Riaprilo dall'icona nell'area di notifica o avviandolo di nuovo.
+      Closing the window does not quit PeriHub: it keeps running to animate the keyboard lighting and to
+      reapply colors when the keyboard is plugged back in. Reopen it from the tray icon or by launching it again.
     </p>
   </div>
 
   <div class="card col">
-    <h2>Dove vengono salvate le impostazioni</h2>
+    <h2>Where settings are stored</h2>
     <ul class="small">
-      <li><b>Mouse</b>: DPI, polling, pulsanti e luci vanno nella memoria del G502 e funzionano anche senza PeriHub.</li>
-      <li><b>Tastiera</b>: la mappa dei tasti va nella memoria della Apex. Le luci invece sono temporanee e PeriHub le riapplica.</li>
-      <li>Prima di ogni scrittura viene salvata una copia di sicurezza nella cartella <code>perihub/backups</code> della configurazione utente.</li>
+      <li><b>Mouse</b>: DPI, polling, buttons and lighting are stored in the G502's memory and work without PeriHub.</li>
+      <li><b>Keyboard</b>: the key mapping is stored in the Apex's memory. Lighting is not kept by the keyboard, so PeriHub reapplies it.</li>
+      <li>Before every write to a device, a backup is saved in the <code>perihub/backups</code> folder of your user configuration.</li>
     </ul>
   </div>
 
   <div class="card col">
-    <h2>Dispositivi</h2>
+    <h2>Devices</h2>
     <div class="small">
-      <div>Apex 3 TKL: {status.keyboard ? `firmware ${status.keyboard.firmware}` : status.keyboard_error ?? "non collegata"}</div>
-      <div>G502 HERO: {status.mouse ? status.mouse.firmware.map((f) => `${f.name} ${f.version}`).join(", ") : status.mouse_error ?? "non collegato"}</div>
+      <div>Apex 3 TKL: {status.keyboard ? `firmware ${status.keyboard.firmware}` : status.keyboard_error ?? "not connected"}</div>
+      <div>G502 HERO: {status.mouse ? status.mouse.firmware.map((f) => `${f.name} ${f.version}`).join(", ") : status.mouse_error ?? "not connected"}</div>
     </div>
     <p class="muted small">
-      Chiudi SteelSeries GG e Logitech G HUB mentre usi PeriHub: due programmi che parlano con lo stesso dispositivo si ostacolano.
+      Quit SteelSeries GG and Logitech G HUB while using PeriHub: two programs talking to the same device get in each other's way.
     </p>
   </div>
 
   <div class="card col">
-    <h2>Riconoscimenti</h2>
+    <h2>Credits</h2>
     <p class="muted small">
-      Protocolli ricostruiti grazie al lavoro di OpenRGB (illuminazione Apex), libratbag (Logitech HID++) e
-      gorkemgun/apex-3-tkl (mappa tasti Apex). PeriHub non è affiliato a SteelSeries né a Logitech.
+      Protocols reconstructed thanks to the work of OpenRGB (Apex lighting), libratbag (Logitech HID++) and
+      gorkemgun/apex-3-tkl (Apex key mapping). PeriHub is not affiliated with SteelSeries or Logitech.
     </p>
   </div>
 
   <div>
-    <button class="danger" onclick={() => api.quit()}>Esci da PeriHub</button>
+    <button class="danger" onclick={() => api.quit()}>Quit PeriHub</button>
   </div>
 </div>
 

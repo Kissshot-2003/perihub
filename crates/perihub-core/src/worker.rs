@@ -47,14 +47,14 @@ impl<T: DeviceTask> Worker<T> {
                     match task.tick() {
                         Ok(next) => wait = next,
                         Err(error) => {
-                            log::warn!("dispositivo non raggiungibile: {error}");
+                            log::warn!("device unreachable: {error}");
                             break;
                         }
                     }
                 }
                 flag.store(false, Ordering::SeqCst);
             })
-            .expect("impossibile avviare il thread del dispositivo");
+            .expect("failed to start the device thread");
         Self { tx, alive }
     }
 

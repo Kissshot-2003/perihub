@@ -13,11 +13,11 @@
 
   type Kind = ButtonAction["type"];
   const KINDS: { kind: Kind; label: string }[] = [
-    { kind: "mouse", label: "Clic del mouse" },
-    { kind: "key", label: "Tasto della tastiera" },
-    { kind: "consumer", label: "Tasto multimediale" },
-    { kind: "special", label: "Funzione del mouse" },
-    { kind: "disabled", label: "Nessuna funzione" },
+    { kind: "mouse", label: "Mouse click" },
+    { kind: "key", label: "Keyboard key" },
+    { kind: "consumer", label: "Media key" },
+    { kind: "special", label: "Mouse function" },
+    { kind: "disabled", label: "Disabled" },
   ];
 
   function changeKind(kind: Kind) {
@@ -40,7 +40,7 @@
 
 <div class="row wrap editor">
   <select value={action.type} onchange={(e) => changeKind(value(e) as Kind)}>
-    {#if action.type === "raw"}<option value="raw" disabled>Macro / valore personalizzato</option>{/if}
+    {#if action.type === "raw"}<option value="raw" disabled>Macro / custom value</option>{/if}
     {#each KINDS as k (k.kind)}
       <option value={k.kind}>{k.label}</option>
     {/each}
@@ -69,7 +69,7 @@
   {:else if action.type === "consumer"}
     <select value={String(action.usage)} onchange={(e) => onchange({ type: "consumer", usage: Number(value(e)) })}>
       {#if !CONSUMER_KEYS.some((c) => action.type === "consumer" && c.usage === action.usage)}
-        <option value={String(action.usage)}>Codice 0x{action.usage.toString(16)}</option>
+        <option value={String(action.usage)}>Code 0x{action.usage.toString(16)}</option>
       {/if}
       {#each CONSUMER_KEYS as c (c.usage)}
         <option value={String(c.usage)}>{c.label}</option>
@@ -82,9 +82,9 @@
       {/each}
     </select>
   {:else if action.type === "raw"}
-    <span class="muted small">Impostato da un altro programma: scegli un tipo per sostituirlo.</span>
+    <span class="muted small">Set by another program: pick a type to replace it.</span>
   {:else if action.type === "disabled" && allowDisabledHint}
-    <span class="muted small">Il pulsante non fa nulla mentre G-Shift è premuto.</span>
+    <span class="muted small">The button does nothing while G-Shift is held.</span>
   {/if}
 </div>
 

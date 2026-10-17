@@ -44,24 +44,24 @@
       <span>PeriHub</span>
     </div>
 
-    <h3>Dispositivi</h3>
+    <h3>Devices</h3>
     <button class:active={page === "keyboard"} onclick={() => go("keyboard")}>
       <span class="dot" class:on={!!status.keyboard}></span>
       <span class="col tight">
         <span>Apex 3 TKL</span>
-        <span class="small muted">{status.keyboard ? "Collegata" : "Non collegata"}</span>
+        <span class="small muted">{status.keyboard ? "Connected" : "Not connected"}</span>
       </span>
     </button>
     <button class:active={page === "mouse"} onclick={() => go("mouse")}>
       <span class="dot" class:on={!!status.mouse}></span>
       <span class="col tight">
         <span>G502 HERO</span>
-        <span class="small muted">{status.mouse ? "Collegato" : "Non collegato"}</span>
+        <span class="small muted">{status.mouse ? "Connected" : "Not connected"}</span>
       </span>
     </button>
 
     <div class="grow"></div>
-    <button class:active={page === "settings"} onclick={() => go("settings")}>Impostazioni</button>
+    <button class:active={page === "settings"} onclick={() => go("settings")}>Settings</button>
   </nav>
 
   <main>

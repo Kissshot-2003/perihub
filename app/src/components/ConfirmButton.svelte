@@ -10,7 +10,7 @@
     children: Snippet;
   }
 
-  let { onconfirm, confirmLabel = "Confermi?", disabled = false, class: klass = "", children }: Props = $props();
+  let { onconfirm, confirmLabel = "Are you sure?", disabled = false, class: klass = "", children }: Props = $props();
   let armed = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
 

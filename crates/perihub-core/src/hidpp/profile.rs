@@ -130,7 +130,7 @@ impl ButtonAction {
         Ok(match *self {
             Self::Mouse { button } => {
                 if !(1..=16).contains(&button) {
-                    return Err(Error::Invalid(format!("pulsante del mouse {button}")));
+                    return Err(Error::Invalid(format!("mouse button {button}")));
                 }
                 let [hi, lo] = (1u16 << (button - 1)).to_be_bytes();
                 [0x80, 0x01, hi, lo]
@@ -249,23 +249,23 @@ impl ProfileSettings {
     /// Controlla che i valori siano accettabili per il mouse.
     pub fn validate(&self, button_count: usize, dpi_min: u16, dpi_max: u16, rates_ms: &[u8]) -> Result<()> {
         if !rates_ms.contains(&self.report_rate_ms) {
-            return Err(Error::Invalid(format!("frequenza di polling {} ms", self.report_rate_ms)));
+            return Err(Error::Invalid(format!("polling interval {} ms", self.report_rate_ms)));
         }
         if self.dpi_levels.is_empty() || self.dpi_levels.len() > DPI_SLOTS {
-            return Err(Error::Invalid("servono da 1 a 5 livelli DPI".into()));
+            return Err(Error::Invalid("between 1 and 5 DPI levels are required".into()));
         }
         if let Some(dpi) = self.dpi_levels.iter().find(|&&d| d < dpi_min || d > dpi_max) {
-            return Err(Error::Invalid(format!("{dpi} DPI fuori dall'intervallo {dpi_min}–{dpi_max}")));
+            return Err(Error::Invalid(format!("{dpi} DPI is outside the {dpi_min}–{dpi_max} range")));
         }
         let levels = self.dpi_levels.len() as u8;
         if self.default_dpi_index >= levels || self.shift_dpi_index >= levels {
-            return Err(Error::Invalid("livello DPI predefinito o shift inesistente".into()));
+            return Err(Error::Invalid("default or shift DPI level does not exist".into()));
         }
         if self.buttons.len() != button_count || self.gshift_buttons.len() != button_count {
-            return Err(Error::Invalid("numero di pulsanti errato".into()));
+            return Err(Error::Invalid("wrong number of buttons".into()));
         }
         if self.leds.len() != LED_SLOTS {
-            return Err(Error::Invalid("numero di zone LED errato".into()));
+            return Err(Error::Invalid("wrong number of LED zones".into()));
         }
         for action in self.buttons.iter().chain(&self.gshift_buttons) {
             action.encode()?;
@@ -278,7 +278,7 @@ impl ProfileSettings {
         let button_count = self.buttons.len();
         check_layout(sector, button_count)?;
         if self.dpi_levels.len() > DPI_SLOTS || self.gshift_buttons.len() != button_count || self.leds.len() != LED_SLOTS {
-            return Err(Error::Invalid("profilo incompleto".into()));
+            return Err(Error::Invalid("incomplete profile".into()));
         }
         sector[OFF_REPORT_RATE] = self.report_rate_ms;
         sector[OFF_DEFAULT_DPI] = self.default_dpi_index;
@@ -303,7 +303,7 @@ impl ProfileSettings {
 
 fn check_layout(sector: &[u8], button_count: usize) -> Result<()> {
     if sector.len() < MIN_SECTOR_SIZE || button_count > BUTTON_SLOTS {
-        return Err(Error::Invalid("formato del profilo non supportato".into()));
+        return Err(Error::Invalid("unsupported profile format".into()));
     }
     Ok(())
 }

@@ -1,5 +1,5 @@
-# PeriHub: accesso alle interfacce HID di configurazione per l'utente con sessione attiva.
-# Installazione manuale:
+# PeriHub: give the user with the active session access to the HID configuration interfaces.
+# Manual install:
 #   sudo cp 70-perihub.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
 
 # SteelSeries Apex 3 TKL

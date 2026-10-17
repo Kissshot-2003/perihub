@@ -54,7 +54,7 @@
   $effect(() => {
     if (info && info !== loadedFor) {
       loadedFor = info;
-      run("Lettura dei profili dal mouse…", api.mouseState).then((s) => s && adopt(s, false));
+      run("Reading profiles from the mouse…", api.mouseState).then((s) => s && adopt(s, false));
     }
     if (!info) {
       loadedFor = null;
@@ -80,11 +80,11 @@
   async function save() {
     if (!draft) return;
     const settings = clone(draft);
-    const next = await run(`Salvataggio del profilo ${selected} nel mouse…`, () => api.saveProfile(selected, settings));
+    const next = await run(`Saving profile ${selected} to the mouse…`, () => api.saveProfile(selected, settings));
     if (next) {
       previewing = false;
       adopt(next);
-      message = `Profilo ${selected} salvato nel mouse.`;
+      message = `Profile ${selected} saved to the mouse.`;
     }
   }
 
@@ -94,16 +94,16 @@
   }
 
   async function factory() {
-    const next = await run(`Ripristino del profilo ${selected}…`, () => api.restoreFactory(selected));
+    const next = await run(`Restoring profile ${selected}…`, () => api.restoreFactory(selected));
     if (next) {
       previewing = false;
       adopt(next);
-      message = `Profilo ${selected} riportato ai valori di fabbrica.`;
+      message = `Profile ${selected} restored to factory settings.`;
     }
   }
 
   async function activate(number: number) {
-    const next = await run("Cambio profilo…", () => api.setActiveProfile(number));
+    const next = await run("Switching profile…", () => api.setActiveProfile(number));
     if (next) {
       previewing = false;
       mouse = next;
@@ -111,7 +111,7 @@
   }
 
   async function toggleEnabled(number: number, enabled: boolean) {
-    const next = await run("Aggiornamento dei profili…", () => api.setProfileEnabled(number, enabled));
+    const next = await run("Updating profiles…", () => api.setProfileEnabled(number, enabled));
     if (next) mouse = next;
   }
 
@@ -132,16 +132,16 @@
   <span class="muted small">
     {#if info}
       Firmware {info.firmware.map((f) => `${f.name} ${f.version}`).join(" · ")}
-      {#if mouse}· DPI attuali {mouse.current_dpi}{/if}
+      {#if mouse}· current DPI {mouse.current_dpi}{/if}
     {:else}
-      Non collegato
+      Not connected
     {/if}
   </span>
 </header>
 
 {#if connectError && !info}<div class="notice error">{connectError}</div>{/if}
 {#if info && !info.writable}
-  <div class="notice error">Questo modello usa un formato di profilo non ancora verificato: le modifiche sono disattivate.</div>
+  <div class="notice error">This model uses a profile format that has not been verified yet: editing is disabled.</div>
 {/if}
 
 {#if info && mouse && draft}
@@ -149,27 +149,27 @@
     {#each mouse.profiles as profile (profile.number)}
       <div class="profile" class:selected={profile.number === selected} class:disabled={!profile.enabled}>
         <button class="pick" onclick={() => selectProfile(profile.number)} disabled={!!busy}>
-          <strong>Profilo {profile.number}</strong>
+          <strong>Profile {profile.number}</strong>
           <span class="small muted">
             {profile.settings.dpi_levels.join(" / ")} DPI · {reportRateLabel(profile.settings.report_rate_ms)}
           </span>
         </button>
         <div class="row small">
           {#if profile.number === mouse.active_profile}
-            <span class="chip active">Attivo</span>
+            <span class="chip active">Active</span>
           {:else}
             <button class="ghost tiny" disabled={!!busy || !profile.enabled} onclick={() => activate(profile.number)}>
-              Rendi attivo
+              Make active
             </button>
           {/if}
-          <label class="row tiny-label" title="I profili disattivati vengono saltati dal pulsante di cambio profilo">
+          <label class="row tiny-label" title="Disabled profiles are skipped by the profile switch button">
             <input
               type="checkbox"
               checked={profile.enabled}
               disabled={!!busy || !info.writable}
               onchange={(e) => toggleEnabled(profile.number, (e.target as HTMLInputElement).checked)}
             />
-            Abilitato
+            Enabled
           </label>
         </div>
       </div>
@@ -181,9 +181,9 @@
   {#if busy}<div class="notice info">{busy}</div>{/if}
 
   <div class="tabs">
-    <button class:active={tab === "performance"} onclick={() => changeTab("performance")}>DPI e polling</button>
-    <button class:active={tab === "buttons"} onclick={() => changeTab("buttons")}>Pulsanti</button>
-    <button class:active={tab === "lighting"} onclick={() => changeTab("lighting")}>Illuminazione</button>
+    <button class:active={tab === "performance"} onclick={() => changeTab("performance")}>DPI and polling</button>
+    <button class:active={tab === "buttons"} onclick={() => changeTab("buttons")}>Buttons</button>
+    <button class:active={tab === "lighting"} onclick={() => changeTab("lighting")}>Lighting</button>
   </div>
 
   <section>
@@ -197,22 +197,22 @@
   </section>
 
   <footer class="row">
-    <ConfirmButton class="danger" disabled={!!busy || !info.writable} onconfirm={factory} confirmLabel="Ripristino il profilo?">
-      Valori di fabbrica
+    <ConfirmButton class="danger" disabled={!!busy || !info.writable} onconfirm={factory} confirmLabel="Reset this profile?">
+      Factory settings
     </ConfirmButton>
     <div class="grow"></div>
     {#if leftClickMissing}
-      <span class="warn small">Nessun pulsante fa più il clic sinistro: assegnalo prima di salvare.</span>
+      <span class="warn small">No button does a left click any more: assign one before saving.</span>
     {:else if dirty}
-      <span class="muted small">Modifiche non salvate</span>
+      <span class="muted small">Unsaved changes</span>
     {/if}
-    <button disabled={!dirty || !!busy} onclick={discard}>Annulla</button>
+    <button disabled={!dirty || !!busy} onclick={discard}>Discard</button>
     <button class="primary" disabled={!dirty || !!busy || leftClickMissing || !info.writable} onclick={save}>
-      Salva nel mouse
+      Save to mouse
     </button>
   </footer>
 {:else if info}
-  {#if error}<div class="notice error">{error}</div>{:else}<div class="notice info">{busy ?? "Caricamento…"}</div>{/if}
+  {#if error}<div class="notice error">{error}</div>{:else}<div class="notice info">{busy ?? "Loading…"}</div>{/if}
 {/if}
 
 <style>

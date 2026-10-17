@@ -43,7 +43,7 @@ impl AppConfig {
     pub fn load() -> Self {
         match fs::read_to_string(config_path()) {
             Ok(text) => serde_json::from_str(&text).unwrap_or_else(|error| {
-                log::warn!("config.json non valido, uso i valori predefiniti: {error}");
+                log::warn!("invalid config.json, using defaults: {error}");
                 Self::default()
             }),
             Err(_) => Self::default(),

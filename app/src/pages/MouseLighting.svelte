@@ -15,10 +15,10 @@
   type Mode = LedEffect["mode"];
   // Codici HID++ degli effetti: 0 spento, 1 fisso, 10 respiro, 3 ciclo colori.
   const MODES: { mode: Exclude<Mode, "raw">; id: number; label: string }[] = [
-    { mode: "off", id: 0, label: "Spento" },
-    { mode: "fixed", id: 1, label: "Fisso" },
-    { mode: "breathing", id: 10, label: "Respiro" },
-    { mode: "cycle", id: 3, label: "Ciclo colori" },
+    { mode: "off", id: 0, label: "Off" },
+    { mode: "fixed", id: 1, label: "Fixed" },
+    { mode: "breathing", id: 10, label: "Breathing" },
+    { mode: "cycle", id: 3, label: "Color cycle" },
   ];
 
   const preview = debounce((zone: number, effect: LedEffect) => {
@@ -63,8 +63,8 @@
 
 <div class="col gap">
   <p class="muted small">
-    Le modifiche si vedono subito sul mouse come anteprima; diventano definitive con «Salva nel mouse».
-    L'anteprima usa il mouse collegato anche se stai modificando un profilo non attivo.
+    Changes are previewed on the mouse right away and become permanent with “Save to mouse”.
+    The preview uses the connected mouse even when you are editing a profile that is not active.
   </p>
   {#if error}<div class="notice error">{error}</div>{/if}
 
@@ -73,7 +73,7 @@
     <div class="card col">
       <h2>{ledZoneName(zone.location)}</h2>
       {#if effect.mode === "raw"}
-        <p class="muted small">Effetto impostato da un altro programma: scegline uno per sostituirlo.</p>
+        <p class="muted small">Effect set by another program: pick one to replace it.</p>
       {/if}
       <div class="segmented">
         {#each MODES.filter((m) => zone.effects.includes(m.id)) as m (m.mode)}
@@ -83,19 +83,19 @@
 
       {#if effect.mode === "fixed" || effect.mode === "breathing"}
         <label class="field">
-          Colore
+          Color
           <input type="color" value={effect.color} oninput={(e) => patch(zone, { color: (e.target as HTMLInputElement).value })} />
         </label>
       {/if}
       {#if effect.mode === "breathing" || effect.mode === "cycle"}
         <div class="row sliders">
           <label class="field grow">
-            Durata di un ciclo: {(effect.period_ms / 1000).toFixed(1)} s
+            Cycle duration: {(effect.period_ms / 1000).toFixed(1)} s
             <input type="range" min="1000" max="20000" step="250" value={effect.period_ms}
               oninput={(e) => patch(zone, { period_ms: num(e) })} />
           </label>
           <label class="field grow">
-            Luminosità: {effect.brightness}%
+            Brightness: {effect.brightness}%
             <input type="range" min="1" max="100" step="1" value={effect.brightness}
               oninput={(e) => patch(zone, { brightness: num(e) })} />
           </label>

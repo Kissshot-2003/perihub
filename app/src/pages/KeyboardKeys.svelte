@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api, errorText, type KeyBinding, type KeyCatalog, type KeyChange, type Keymap } from "../lib/api";
-  import { bindingLabel, keyLabel, LAYOUT_HEIGHT, LAYOUT_WIDTH, TKL_ISO, type KeyCap } from "../lib/keys";
+  import { bindingLabel, keyLabel, LAYOUT_HEIGHT, LAYOUT_WIDTH, layoutCaps, type KeyCap } from "../lib/keys";
+  import { LAYOUTS, prefs, setLayout, type LayoutId } from "../lib/prefs.svelte";
   import ConfirmButton from "../components/ConfirmButton.svelte";
 
   const UNIT = 46;
@@ -21,7 +22,7 @@
   let selected = $state<number | null>(null);
   /** Modifiche non ancora salvate, per livello: usage → nuova funzione. */
   let drafts = $state<[Record<number, KeyBinding>, Record<number, KeyBinding>]>([{}, {}]);
-  let busy = $state<string | null>("Lettura della mappa dei tasti…");
+  let busy = $state<string | null>("Reading the key mapping…");
   let error = $state<string | null>(null);
   let message = $state<string | null>(null);
 
@@ -76,12 +77,12 @@
   );
 
   async function save() {
-    busy = "Salvataggio sulla tastiera…";
+    busy = "Saving to the keyboard…";
     error = message = null;
     try {
       keymap = await api.applyKeymap(pending);
       drafts = [{}, {}];
-      message = "Mappa dei tasti salvata nella tastiera.";
+      message = "Key mapping saved to the keyboard.";
     } catch (e) {
       error = errorText(e);
     } finally {
@@ -90,12 +91,12 @@
   }
 
   async function resetAll() {
-    busy = "Ripristino dei tasti di fabbrica…";
+    busy = "Restoring factory keys…";
     error = message = null;
     try {
       keymap = await api.resetKeymap();
       drafts = [{}, {}];
-      message = "Tutti i tasti sono tornati ai valori di fabbrica.";
+      message = "All keys are back to their factory settings.";
     } catch (e) {
       error = errorText(e);
     } finally {
@@ -107,14 +108,14 @@
   const groups = $derived.by((): Group[] => {
     if (!catalog) return [];
     const ranges: [string, (u: number) => boolean][] = [
-      ["Lettere", (u) => u >= 0x04 && u <= 0x1d],
-      ["Numeri e simboli", (u) => (u >= 0x1e && u <= 0x38 && ![0x28, 0x29, 0x2a, 0x2b, 0x2c].includes(u)) || u === 0x64],
-      ["Tasti speciali", (u) => [0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x39, 0x65].includes(u)],
-      ["Funzione F1–F24", (u) => (u >= 0x3a && u <= 0x45) || (u >= 0x68 && u <= 0x73)],
-      ["Navigazione", (u) => u >= 0x46 && u <= 0x52],
-      ["Modificatori", (u) => u >= 0xe0 && u <= 0xe7],
-      ["Tastierino numerico", (u) => (u >= 0x53 && u <= 0x63) || u === 0x67 || u === 0x85],
-      ["Internazionali", (u) => u >= 0x87 && u <= 0x91],
+      ["Letters", (u) => u >= 0x04 && u <= 0x1d],
+      ["Numbers and symbols", (u) => (u >= 0x1e && u <= 0x38 && ![0x28, 0x29, 0x2a, 0x2b, 0x2c].includes(u)) || u === 0x64],
+      ["Special keys", (u) => [0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x39, 0x65].includes(u)],
+      ["Function keys F1–F24", (u) => (u >= 0x3a && u <= 0x45) || (u >= 0x68 && u <= 0x73)],
+      ["Navigation", (u) => u >= 0x46 && u <= 0x52],
+      ["Modifiers", (u) => u >= 0xe0 && u <= 0xe7],
+      ["Numpad", (u) => (u >= 0x53 && u <= 0x63) || u === 0x67 || u === 0x85],
+      ["International", (u) => u >= 0x87 && u <= 0x91],
     ];
     return ranges.map(([name, test]) => ({
       name,
@@ -143,14 +144,22 @@
 <div class="col gap">
   <div class="row">
     <div class="segmented">
-      <button class:active={layer === 0} onclick={() => (layer = 0)}>Normale</button>
-      <button class:active={layer === 1} onclick={() => (layer = 1)}>Con tasto SteelSeries</button>
+      <button class:active={layer === 0} onclick={() => (layer = 0)}>Normal</button>
+      <button class:active={layer === 1} onclick={() => (layer = 1)}>With SteelSeries key</button>
     </div>
     <span class="muted small grow">
       {layer === 0
-        ? "Cosa fa ogni tasto quando lo premi."
-        : "Cosa fa ogni tasto mentre tieni premuto il tasto SteelSeries."}
+        ? "What each key does when you press it."
+        : "What each key does while you hold the SteelSeries key."}
     </span>
+    <label class="row small muted">
+      Layout
+      <select value={prefs.layout} onchange={(e) => setLayout((e.target as HTMLSelectElement).value as LayoutId)}>
+        {#each LAYOUTS as l (l.id)}
+          <option value={l.id}>{l.label}</option>
+        {/each}
+      </select>
+    </label>
   </div>
 
   {#if error}<div class="notice error">{error}</div>{/if}
@@ -159,7 +168,7 @@
 
   {#if keymap}
     <div class="board" style:width="{LAYOUT_WIDTH * UNIT}px" style:height="{LAYOUT_HEIGHT * UNIT}px">
-      {#each TKL_ISO as cap (cap.usage)}
+      {#each layoutCaps(prefs.layout) as cap (cap.usage)}
         <button
           class="cap {capClass(cap)}"
           class:selected={selected === cap.usage}
@@ -168,7 +177,7 @@
           style:top="{cap.y * UNIT}px"
           style:width="{cap.w * UNIT - 4}px"
           style:height="{cap.h * UNIT - 4}px"
-          title={cap.locked ? "Questo tasto non è rimappabile dal firmware" : keyLabel(cap.usage)}
+          title={cap.locked ? "The firmware cannot remap this key" : keyLabel(cap.usage)}
           onclick={() => (selected = cap.usage)}
         >
           <span>{keyLabel(cap.usage)}</span>
@@ -178,28 +187,28 @@
     </div>
 
     <div class="row legend small muted">
-      <span><i class="custom"></i> Personalizzato</span>
-      <span><i class="draft"></i> Da salvare</span>
-      <span><i class="locked"></i> Non rimappabile</span>
+      <span><i class="custom"></i> Customized</span>
+      <span><i class="draft"></i> Not saved yet</span>
+      <span><i class="locked"></i> Not remappable</span>
     </div>
 
     <div class="card row editor">
       {#if selected === null}
-        <span class="muted">Seleziona un tasto per cambiarne la funzione.</span>
+        <span class="muted">Select a key to change what it does.</span>
       {:else}
         <div class="col tight">
-          <span class="small muted">Tasto</span>
-          <strong>{keyLabel(selected)}{layer === 1 ? " (con SteelSeries)" : ""}</strong>
+          <span class="small muted">Key</span>
+          <strong>{keyLabel(selected)}{layer === 1 ? " (with SteelSeries)" : ""}</strong>
         </div>
         <div class="col tight">
-          <span class="small muted">Funzione</span>
-          <strong>{selectedBinding?.type === "none" ? "Come senza SteelSeries" : bindingLabel(selectedBinding)}</strong>
+          <span class="small muted">Function</span>
+          <strong>{selectedBinding?.type === "none" ? "Same as without SteelSeries" : bindingLabel(selectedBinding)}</strong>
         </div>
         <label class="field grow">
-          Nuova funzione
+          New function
           <select value={selectedValue} onchange={onTarget}>
-            <option value="" disabled>Scegli un tasto…</option>
-            <option value="factory">Valore di fabbrica</option>
+            <option value="" disabled>Choose a key…</option>
+            <option value="factory">Factory default</option>
             {#each groups as group (group.name)}
               <optgroup label={group.name}>
                 {#each group.keys as key (key.usage)}
@@ -213,19 +222,19 @@
     </div>
 
     <div class="row">
-      <ConfirmButton class="danger" disabled={!!busy} onconfirm={resetAll} confirmLabel="Ripristino tutti i tasti?">
-        Ripristina tutti di fabbrica
+      <ConfirmButton class="danger" disabled={!!busy} onconfirm={resetAll} confirmLabel="Reset all keys?">
+        Reset all to factory
       </ConfirmButton>
       <div class="grow"></div>
       {#if pending.length}
-        <span class="muted small">{pending.length} modifiche da salvare</span>
-        <button disabled={!!busy} onclick={() => (drafts = [{}, {}])}>Annulla</button>
+        <span class="muted small">{pending.length} unsaved {pending.length === 1 ? "change" : "changes"}</span>
+        <button disabled={!!busy} onclick={() => (drafts = [{}, {}])}>Discard</button>
       {/if}
-      <button class="primary" disabled={!pending.length || !!busy} onclick={save}>Salva sulla tastiera</button>
+      <button class="primary" disabled={!pending.length || !!busy} onclick={save}>Save to keyboard</button>
     </div>
     <p class="muted small">
-      La mappa viene salvata nella memoria della tastiera e funziona anche senza PeriHub, su qualsiasi computer.
-      Prima di ogni salvataggio viene creata una copia di sicurezza.
+      The mapping is stored in the keyboard's memory and works without PeriHub, on any computer.
+      A backup is created before every save.
     </p>
   {/if}
 </div>

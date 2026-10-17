@@ -73,7 +73,7 @@ impl Manager {
         thread::Builder::new()
             .name("perihub-hotplug".into())
             .spawn(move || background.hotplug_loop(listener))
-            .expect("impossibile avviare il rilevamento dispositivi");
+            .expect("failed to start device detection");
         manager
     }
 
@@ -82,7 +82,7 @@ impl Manager {
             Ok(api) => api,
             Err(error) => {
                 let mut slots = self.slots.lock().unwrap();
-                slots.keyboard_error = Some(format!("HID non disponibile: {error}"));
+                slots.keyboard_error = Some(format!("HID unavailable: {error}"));
                 slots.mouse_error = slots.keyboard_error.clone();
                 drop(slots);
                 listener(&self.status());
@@ -100,7 +100,7 @@ impl Manager {
     /// Un giro di rilevamento. Restituisce `true` se qualcosa è cambiato.
     fn poll(&self, api: &mut HidApi) -> bool {
         if let Err(error) = api.refresh_devices() {
-            log::warn!("enumerazione HID fallita: {error}");
+            log::warn!("HID enumeration failed: {error}");
             return false;
         }
         let keyboard = api.device_list().find(|d| is_keyboard_config_interface(d)).cloned();
@@ -189,8 +189,8 @@ impl Manager {
 
 fn open_error_message(error: Error) -> String {
     let text = error.to_string();
-    if text.contains("Permission denied") || text.contains("ermesso") {
-        "permesso negato: installa la regola udev di PeriHub (vedi README)".into()
+    if text.contains("Permission denied") || text.contains("ermesso") || text.contains("ccess is denied") {
+        "permission denied: install the PeriHub udev rule (see the README)".into()
     } else {
         text
     }

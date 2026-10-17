@@ -78,7 +78,7 @@ impl Serialize for Rgb {
 impl<'de> Deserialize<'de> for Rgb {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let text = String::deserialize(deserializer)?;
-        Rgb::from_hex(&text).ok_or_else(|| serde::de::Error::custom(format!("colore non valido: {text}")))
+        Rgb::from_hex(&text).ok_or_else(|| serde::de::Error::custom(format!("invalid color: {text}")))
     }
 }
 

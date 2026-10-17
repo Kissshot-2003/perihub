@@ -31,7 +31,7 @@ pub const TARGET_KEYS: &[KeyInfo] = &[
     k(0x1C, "Y"), k(0x1D, "Z"),
     k(0x1E, "1"), k(0x1F, "2"), k(0x20, "3"), k(0x21, "4"), k(0x22, "5"), k(0x23, "6"),
     k(0x24, "7"), k(0x25, "8"), k(0x26, "9"), k(0x27, "0"),
-    k(0x28, "Enter"), k(0x29, "Esc"), k(0x2A, "Backspace"), k(0x2B, "Tab"), k(0x2C, "Spazio"),
+    k(0x28, "Enter"), k(0x29, "Esc"), k(0x2A, "Backspace"), k(0x2B, "Tab"), k(0x2C, "Space"),
     k(0x2D, "Minus"), k(0x2E, "Equal"), k(0x2F, "LeftBracket"), k(0x30, "RightBracket"),
     k(0x31, "Backslash"), k(0x32, "NonUsHash"), k(0x33, "Semicolon"), k(0x34, "Quote"),
     k(0x35, "Grave"), k(0x36, "Comma"), k(0x37, "Period"), k(0x38, "Slash"), k(0x39, "CapsLock"),

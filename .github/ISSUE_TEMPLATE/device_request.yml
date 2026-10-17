@@ -1,0 +1,42 @@
+name: Device request
+description: Ask for support for a new device
+labels: ["device request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping PeriHub support more hardware. Devices are added once their protocol can be verified on real hardware, so the more details you share, the better.
+  - type: input
+    id: model
+    attributes:
+      label: Device model
+      placeholder: e.g. Logitech G305 LIGHTSPEED
+    validations:
+      required: true
+  - type: input
+    id: usb-id
+    attributes:
+      label: USB ID (vendor:product)
+      description: "Linux: `lsusb`. Windows: Device Manager → device → Properties → Details → Hardware IDs (VID_xxxx&PID_xxxx)."
+      placeholder: e.g. 046d:c094
+    validations:
+      required: true
+  - type: textarea
+    id: features
+    attributes:
+      label: Features you use in the official software
+      placeholder: DPI levels, lighting, button remapping, onboard profiles…
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      multiple: true
+      options:
+        - Windows
+        - Linux
+  - type: checkboxes
+    id: testing
+    attributes:
+      label: Testing
+      options:
+        - label: I can run read-only diagnostic commands and share their output.

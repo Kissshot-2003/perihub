@@ -50,19 +50,19 @@
 <div class="col gap">
   <div class="card col">
     <div class="row">
-      <h2 class="grow">Livelli DPI</h2>
-      <span class="muted small">{caps.min}–{caps.max} DPI, passo {caps.step}</span>
+      <h2 class="grow">DPI levels</h2>
+      <span class="muted small">{caps.min}–{caps.max} DPI, step {caps.step}</span>
     </div>
     <p class="muted small">
-      Il livello <b>predefinito</b> è quello attivo quando selezioni il profilo; il livello <b>sniper</b> vale
-      mentre tieni premuto il pulsante DPI Shift. Muovendo un cursore il mouse prova subito quei DPI.
+      The <b>default</b> level is active when the profile is selected; the <b>sniper</b> level applies while
+      you hold the DPI Shift button. Moving a slider lets you try that DPI on the mouse right away.
     </p>
 
     <div class="levels">
-      <span class="small muted">Livello</span>
+      <span class="small muted">Level</span>
       <span class="small muted">DPI</span>
       <span class="small muted"></span>
-      <span class="small muted center">Predefinito</span>
+      <span class="small muted center">Default</span>
       <span class="small muted center">Sniper</span>
       <span></span>
       {#each settings.dpi_levels as dpi, i (i)}
@@ -87,17 +87,17 @@
           onchange={() => (settings.default_dpi_index = i)} />
         <input class="center" type="radio" name="shift-dpi" checked={settings.shift_dpi_index === i}
           disabled={!info.onboard.has_dpi_shift} onchange={() => (settings.shift_dpi_index = i)} />
-        <button class="ghost" disabled={settings.dpi_levels.length <= 1} onclick={() => removeLevel(i)} aria-label="Rimuovi livello">✕</button>
+        <button class="ghost" disabled={settings.dpi_levels.length <= 1} onclick={() => removeLevel(i)} aria-label="Remove level">✕</button>
       {/each}
     </div>
     <div>
-      <button disabled={settings.dpi_levels.length >= MAX_LEVELS} onclick={addLevel}>+ Aggiungi livello</button>
+      <button disabled={settings.dpi_levels.length >= MAX_LEVELS} onclick={addLevel}>+ Add level</button>
     </div>
   </div>
 
   <div class="card col">
-    <h2>Frequenza di polling</h2>
-    <p class="muted small">Quante volte al secondo il mouse comunica la sua posizione. 1000 Hz è il valore consigliato per giocare.</p>
+    <h2>Polling rate</h2>
+    <p class="muted small">How many times per second the mouse reports its position. 1000 Hz is recommended for gaming.</p>
     <div class="segmented">
       {#each [...info.report_rates_ms].sort((a, b) => a - b) as ms (ms)}
         <button class:active={settings.report_rate_ms === ms} onclick={() => (settings.report_rate_ms = ms)}>

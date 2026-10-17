@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Dipendenze di sistema (Linux)
+      - name: System dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -34,7 +34,7 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
-      - name: Interfaccia (controllo tipi e build)
+      - name: Frontend (type check and build)
         working-directory: app
         run: |
           npm ci

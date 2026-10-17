@@ -153,7 +153,7 @@ impl Apex3Tkl {
         let n = self.dev.get_feature_report(&mut reply)?;
         if n < 3 || reply[1] != request[0] {
             return Err(Error::Protocol(format!(
-                "risposta {:#04x} al comando {:#04x} (forse SteelSeries GG è aperto?)",
+                "reply {:#04x} to command {:#04x} (is SteelSeries GG running?)",
                 reply[1], request[0]
             )));
         }
@@ -175,7 +175,7 @@ impl Apex3Tkl {
     fn write(&self, command: &FeatureCommand) -> Result<()> {
         let reply = self.send_feature(command, WRITE_DELAY)?;
         if reply[2] != 0 {
-            return Err(Error::Protocol(format!("comando rifiutato (stato {:#04x})", reply[2])));
+            return Err(Error::Protocol(format!("command rejected (status {:#04x})", reply[2])));
         }
         Ok(())
     }
@@ -233,7 +233,7 @@ impl Apex3Tkl {
                 }
                 attempt += 1;
                 if attempt >= 4 {
-                    return Err(Error::Protocol("risposta della mappa tasti non coerente".into()));
+                    return Err(Error::Protocol("inconsistent keymap response".into()));
                 }
                 sleep(Duration::from_millis(150));
             }
@@ -277,7 +277,7 @@ impl Apex3Tkl {
             }
             let after = [self.read_layer(0)?, self.read_layer(1)?];
             if after != expected {
-                return Err(Error::Protocol("la tastiera non ha applicato le modifiche come previsto".into()));
+                return Err(Error::Protocol("the keyboard did not apply the changes as expected".into()));
             }
             Ok(())
         })();
@@ -293,27 +293,27 @@ impl Apex3Tkl {
         self.save()?;
         let saved = [self.read_layer(0)?, self.read_layer(1)?];
         if saved != expected {
-            return Err(Error::Protocol("la mappa riletta dopo il salvataggio è diversa".into()));
+            return Err(Error::Protocol("the keymap read back after saving is different".into()));
         }
         Ok(saved)
     }
 }
 
 fn check_layer(layer: u8) -> Result<()> {
-    if LAYERS.contains(&layer) { Ok(()) } else { Err(Error::Invalid(format!("livello {layer}"))) }
+    if LAYERS.contains(&layer) { Ok(()) } else { Err(Error::Invalid(format!("layer {layer}"))) }
 }
 
 /// Valori ammessi in scrittura: un tasto singolo valido, oppure il valore di fabbrica.
 pub fn validate_binding(layer: u8, source: u8, binding: KeyBinding) -> Result<()> {
     if !keys::is_remappable_source(source) {
-        return Err(Error::Invalid(format!("il tasto {source:#04x} non è rimappabile")));
+        return Err(Error::Invalid(format!("key {source:#04x} cannot be remapped")));
     }
     if binding == KeyBinding::factory(layer, source) {
         return Ok(());
     }
     match binding {
         KeyBinding::Key { usage } if keys::is_valid_target(usage) => Ok(()),
-        _ => Err(Error::Invalid(format!("funzione non consentita per il tasto {source:#04x}"))),
+        _ => Err(Error::Invalid(format!("this function is not allowed for key {source:#04x}"))),
     }
 }
 

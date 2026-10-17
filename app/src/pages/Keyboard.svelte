@@ -18,7 +18,7 @@
   <div class="col tight grow">
     <h1>SteelSeries Apex 3 TKL</h1>
     <span class="muted small">
-      {#if info}Firmware {info.firmware}{:else}Non collegata: le impostazioni di illuminazione verranno applicate al collegamento{/if}
+      {#if info}Firmware {info.firmware}{:else}Not connected: lighting settings will be applied when it is plugged in{/if}
     </span>
   </div>
 </header>
@@ -28,8 +28,8 @@
 {/if}
 
 <div class="tabs">
-  <button class:active={tab === "lighting"} onclick={() => (tab = "lighting")}>Illuminazione</button>
-  <button class:active={tab === "keys"} onclick={() => (tab = "keys")}>Tasti</button>
+  <button class:active={tab === "lighting"} onclick={() => (tab = "lighting")}>Lighting</button>
+  <button class:active={tab === "keys"} onclick={() => (tab = "keys")}>Keys</button>
 </div>
 
 <section>
@@ -38,7 +38,7 @@
   {:else if info}
     <KeyboardKeys />
   {:else}
-    <div class="notice info">Collega la tastiera per modificare la mappa dei tasti.</div>
+    <div class="notice info">Connect the keyboard to edit its key mapping.</div>
   {/if}
 </section>
 

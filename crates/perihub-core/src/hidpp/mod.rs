@@ -96,14 +96,14 @@ impl HidppDevice {
         let mut device = Self { dev, features: HashMap::new() };
         let (major, _) = device.protocol_version()?;
         if major < 2 {
-            return Err(Error::Protocol(format!("HID++ {major}.x non supportato")));
+            return Err(Error::Protocol(format!("HID++ {major}.x is not supported")));
         }
         Ok(device)
     }
 
     fn transact(&mut self, index: u8, function: u8, params: &[u8]) -> Result<[u8; 16]> {
         if params.len() > LONG_LEN - 4 {
-            return Err(Error::Invalid("troppi parametri HID++".into()));
+            return Err(Error::Invalid("too many HID++ parameters".into()));
         }
         let address = (function << 4) | SOFTWARE_ID;
         let mut packet = [0u8; LONG_LEN];
@@ -140,7 +140,7 @@ impl HidppDevice {
 
     fn feature_index(&mut self, id: u16) -> Result<u8> {
         if !ALLOWED_FEATURES.contains(&id) {
-            return Err(Error::Invalid(format!("funzione HID++ {id:#06x} non consentita")));
+            return Err(Error::Invalid(format!("HID++ feature {id:#06x} is not allowed")));
         }
         if id == feature::ROOT {
             return Ok(0);
@@ -217,7 +217,7 @@ impl HidppDevice {
             caps.list.clear();
         }
         if caps.max == 0 {
-            return Err(Error::Protocol("elenco DPI vuoto".into()));
+            return Err(Error::Protocol("empty DPI list".into()));
         }
         Ok(caps)
     }
@@ -273,7 +273,7 @@ impl HidppDevice {
             .effects
             .iter()
             .position(|&id| id == encoded[0] as u16)
-            .ok_or_else(|| Error::Invalid("effetto non supportato da questa zona".into()))?;
+            .ok_or_else(|| Error::Invalid("effect not supported by this zone".into()))?;
         encoded[0] = position as u8;
         let mut params = [0u8; 13];
         params[0] = zone.index;
@@ -308,7 +308,7 @@ impl HidppDevice {
 
     pub fn set_onboard_mode(&mut self, mode: u8) -> Result<()> {
         if mode != 1 && mode != 2 {
-            return Err(Error::Invalid(format!("modalità {mode}")));
+            return Err(Error::Invalid(format!("mode {mode}")));
         }
         self.call(feature::ONBOARD_PROFILES, 1, &[mode])?;
         Ok(())
@@ -330,7 +330,7 @@ impl HidppDevice {
 
     pub fn set_active_dpi_index(&mut self, index: u8) -> Result<()> {
         if index > 4 {
-            return Err(Error::Invalid(format!("livello DPI {index}")));
+            return Err(Error::Invalid(format!("DPI level {index}")));
         }
         self.call(feature::ONBOARD_PROFILES, 0x0C, &[index])?;
         Ok(())
@@ -355,13 +355,13 @@ impl HidppDevice {
     /// Scrive un settore utente (directory o profilo). I settori di fabbrica non sono scrivibili.
     pub fn write_sector(&mut self, sector: u16, data: &[u8], info: &OnboardInfo) -> Result<()> {
         if sector > info.profile_count as u16 {
-            return Err(Error::Invalid(format!("settore {sector:#06x} non scrivibile")));
+            return Err(Error::Invalid(format!("sector {sector:#06x} is not writable")));
         }
         if data.len() != info.sector_size as usize || !data.len().is_multiple_of(16) {
-            return Err(Error::Invalid("dimensione del settore errata".into()));
+            return Err(Error::Invalid("wrong sector size".into()));
         }
         if !profile::crc_is_valid(data) {
-            return Err(Error::Invalid("CRC del settore non valido".into()));
+            return Err(Error::Invalid("invalid sector CRC".into()));
         }
         let [s_hi, s_lo] = sector.to_be_bytes();
         let [l_hi, l_lo] = (data.len() as u16).to_be_bytes();

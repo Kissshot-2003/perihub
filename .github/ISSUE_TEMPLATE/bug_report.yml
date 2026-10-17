@@ -1,0 +1,35 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: PeriHub version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. Windows 11, Ubuntu 24.04, CachyOS (Hyprland)
+    validations:
+      required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      options:
+        - SteelSeries Apex 3 TKL
+        - Logitech G502 HERO
+        - Both / not device-specific
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what the app showed (error messages are very helpful).
+    validations:
+      required: true

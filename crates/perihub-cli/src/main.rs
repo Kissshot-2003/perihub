@@ -8,28 +8,28 @@ use perihub_core::apex::KeyBinding;
 use perihub_core::hidpp::profile::{LedEffect, ProfileSettings};
 use perihub_core::{Manager, Result};
 
-const USAGE: &str = "uso:
+const USAGE: &str = "usage:
   perihub-cli status
   perihub-cli keyboard keymap
   perihub-cli keyboard brightness [0-16]
-  perihub-cli keyboard light '<json KeyboardLighting>' [secondi]
+  perihub-cli keyboard light '<json KeyboardLighting>' [seconds]
   perihub-cli mouse state
   perihub-cli mouse preview-dpi <dpi>
-  perihub-cli mouse preview-led <zona> '<json LedEffect>'
-  perihub-cli mouse profile <numero>
-  perihub-cli mouse dpi-level <indice>
-  perihub-cli mouse get-profile <numero>
-  perihub-cli mouse save-profile <numero> '<json ProfileSettings>'
-  perihub-cli mouse factory <numero>
-  perihub-cli mouse sector <numero esadecimale>
-  perihub-cli keyboard remap <livello> <usage esadecimale> '<json KeyBinding>'
+  perihub-cli mouse preview-led <zone> '<json LedEffect>'
+  perihub-cli mouse profile <number>
+  perihub-cli mouse dpi-level <index>
+  perihub-cli mouse get-profile <number>
+  perihub-cli mouse save-profile <number> '<json ProfileSettings>'
+  perihub-cli mouse factory <number>
+  perihub-cli mouse sector <hex number>
+  perihub-cli keyboard remap <layer> <hex usage> '<json KeyBinding>'
   perihub-cli keyboard reset-keymap";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     if let Err(error) = run(&args) {
-        eprintln!("errore: {error}");
+        eprintln!("error: {error}");
         std::process::exit(1);
     }
 }
@@ -60,7 +60,7 @@ fn run(args: &[&str]) -> Result<()> {
         ["keyboard", "keymap"] => print_json(&manager.keyboard()?.call(|k| k.keymap())?),
         ["keyboard", "brightness"] => print_json(&manager.keyboard()?.call(|k| k.brightness())?),
         ["keyboard", "brightness", level] => {
-            let level: u8 = level.parse().map_err(|_| invalid("luminosità"))?;
+            let level: u8 = level.parse().map_err(|_| invalid("brightness"))?;
             manager.keyboard()?.call(move |k| k.set_brightness(level))
         }
         ["keyboard", "light", json, rest @ ..] => {
@@ -79,43 +79,43 @@ fn run(args: &[&str]) -> Result<()> {
             manager.mouse()?.call(move |m| m.preview_dpi(dpi))
         }
         ["mouse", "preview-led", zone, json] => {
-            let zone: u8 = zone.parse().map_err(|_| invalid("zona"))?;
+            let zone: u8 = zone.parse().map_err(|_| invalid("zone"))?;
             let effect: LedEffect = serde_json::from_str(json)?;
             manager.mouse()?.call(move |m| m.preview_led(zone, &effect))
         }
         ["mouse", "profile", number] => {
-            let number: u8 = number.parse().map_err(|_| invalid("profilo"))?;
+            let number: u8 = number.parse().map_err(|_| invalid("profile"))?;
             manager.mouse()?.call(move |m| m.set_active_profile(number))
         }
         ["mouse", "dpi-level", index] => {
-            let index: u8 = index.parse().map_err(|_| invalid("livello"))?;
+            let index: u8 = index.parse().map_err(|_| invalid("level"))?;
             manager.mouse()?.call(move |m| m.set_active_dpi_index(index))
         }
         ["mouse", "get-profile", number] => {
-            let number: u8 = number.parse().map_err(|_| invalid("profilo"))?;
+            let number: u8 = number.parse().map_err(|_| invalid("profile"))?;
             let state = manager.mouse()?.call(|m| m.state())?;
-            let profile = state.profiles.into_iter().find(|p| p.number == number).ok_or_else(|| invalid("profilo"))?;
+            let profile = state.profiles.into_iter().find(|p| p.number == number).ok_or_else(|| invalid("profile"))?;
             println!("{}", serde_json::to_string(&profile.settings)?);
             Ok(())
         }
         ["mouse", "save-profile", number, json] => {
-            let number: u8 = number.parse().map_err(|_| invalid("profilo"))?;
+            let number: u8 = number.parse().map_err(|_| invalid("profile"))?;
             let settings: ProfileSettings = serde_json::from_str(json)?;
             manager.mouse()?.call(move |m| m.save_profile(number, &settings)).map(|_| ())
         }
         ["mouse", "factory", number] => {
-            let number: u8 = number.parse().map_err(|_| invalid("profilo"))?;
+            let number: u8 = number.parse().map_err(|_| invalid("profile"))?;
             manager.mouse()?.call(move |m| m.restore_factory_profile(number)).map(|_| ())
         }
         ["mouse", "sector", sector] => {
-            let sector = u16::from_str_radix(sector, 16).map_err(|_| invalid("settore"))?;
+            let sector = u16::from_str_radix(sector, 16).map_err(|_| invalid("sector"))?;
             let data = manager.mouse()?.call(move |m| m.read_raw_sector(sector))?;
             println!("{}", data.iter().map(|b| format!("{b:02x}")).collect::<String>());
             Ok(())
         }
         ["keyboard", "remap", layer, source, json] => {
-            let layer: u8 = layer.parse().map_err(|_| invalid("livello"))?;
-            let source = u8::from_str_radix(source.trim_start_matches("0x"), 16).map_err(|_| invalid("tasto"))?;
+            let layer: u8 = layer.parse().map_err(|_| invalid("level"))?;
+            let source = u8::from_str_radix(source.trim_start_matches("0x"), 16).map_err(|_| invalid("key"))?;
             let binding: KeyBinding = serde_json::from_str(json)?;
             let keymap = manager.keyboard()?.call(move |k| k.apply_keymap(&[(layer, source, binding)]))?;
             let layer_map = if layer == 0 { &keymap.normal } else { &keymap.steelseries };

@@ -30,15 +30,15 @@
   {#if info.onboard.has_gshift}
     <div class="row">
       <div class="segmented">
-        <button class:active={layer === "normal"} onclick={() => (layer = "normal")}>Normale</button>
+        <button class:active={layer === "normal"} onclick={() => (layer = "normal")}>Normal</button>
         <button class:active={layer === "gshift"} onclick={() => (layer = "gshift")}>G-Shift</button>
       </div>
       <span class="muted small">
         {#if layer === "gshift"}
-          Funzioni usate mentre tieni premuto il pulsante a cui hai assegnato «G-Shift».
-          {#if !hasGShiftButton}<b class="warn">Nessun pulsante ha ancora la funzione G-Shift.</b>{/if}
+          Functions used while you hold the button assigned to “G-Shift”.
+          {#if !hasGShiftButton}<b class="warn">No button has the G-Shift function yet.</b>{/if}
         {:else}
-          Funzioni normali dei pulsanti.
+          Normal button functions.
         {/if}
       </span>
     </div>
@@ -47,8 +47,8 @@
   <div class="card buttons">
     {#each list as action, i (i)}
       <div class="name">
-        <strong>{MOUSE_BUTTON_NAMES[i] ?? `Pulsante ${i + 1}`}</strong>
-        <span class="small muted">Pulsante {i + 1}</span>
+        <strong>{MOUSE_BUTTON_NAMES[i] ?? `Button ${i + 1}`}</strong>
+        <span class="small muted">Button {i + 1}</span>
       </div>
       <ButtonActionEditor {action} {keys} allowDisabledHint={layer === "gshift"} onchange={(a) => update(i, a)} />
     {/each}
