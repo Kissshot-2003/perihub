@@ -1,0 +1,14 @@
+[package]
+name = "perihub-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "perihub-cli"
+path = "src/main.rs"
+
+[dependencies]
+perihub-core.workspace = true
+serde_json.workspace = true
+serde.workspace = true
