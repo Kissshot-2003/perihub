@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
+  import { cubicOut } from "svelte/easing";
+  import { Tween } from "svelte/motion";
   import { api, debounce, errorText, type KeyboardLighting, type Rgb } from "../lib/api";
   import { ZONES } from "../lib/effects";
   import ZoneStrip from "../components/ZoneStrip.svelte";
@@ -30,7 +32,10 @@
   let to = $state<Rgb>("#2f5bff");
   let period = $state(3000);
   let reverse = $state(false);
+  /** Keyboard brightness level, 0–16. */
   let brightness = $state(16);
+  /** Slider position: follows `brightness` smoothly and moves freely while dragged. */
+  const brightnessShown = new Tween(16, { duration: 200, easing: cubicOut });
   let error = $state<string | null>(null);
   /** When the slider was last moved, so polling does not fight with the user. */
   let brightnessTouched = 0;
@@ -79,6 +84,7 @@
         /* keep the saved value */
       }
     }
+    brightnessShown.set(brightness, { duration: 0 });
     loaded = true;
   });
 
@@ -87,21 +93,35 @@
     if (!connected || document.hidden || Date.now() - brightnessTouched < 1500) return;
     try {
       const level = await api.readBrightness();
-      if (Date.now() - brightnessTouched >= 1500) brightness = level;
+      if (Date.now() - brightnessTouched >= 1500 && level !== brightness) {
+        brightness = level;
+        brightnessShown.target = level;
+      }
     } catch {
       /* keyboard busy or unplugged: try again later */
     }
-  }, 1000);
+  }, 250);
   onDestroy(() => clearInterval(brightnessPoll));
 
   function setAll(color: Rgb) {
     zones = Array(ZONES).fill(color);
   }
 
+  // The keyboard has 17 levels: the slider moves freely and a new level is sent when it is crossed.
   function onBrightness(event: Event) {
     brightnessTouched = Date.now();
-    brightness = Number((event.target as HTMLInputElement).value);
-    pushBrightness(brightness);
+    const position = Number((event.target as HTMLInputElement).value);
+    brightnessShown.set(position, { duration: 0 });
+    const level = Math.round(position);
+    if (level !== brightness) {
+      brightness = level;
+      pushBrightness(level);
+    }
+  }
+
+  /** On release, the slider settles on the level the keyboard actually uses. */
+  function onBrightnessEnd() {
+    brightnessShown.target = brightness;
   }
 
   const usesZones = $derived(kind === "static" || kind === "breathing");
@@ -109,7 +129,7 @@
 </script>
 
 <div class="col gap">
-  <ZoneStrip {lighting} {brightness} />
+  <ZoneStrip {lighting} brightness={brightnessShown.current} />
 
   {#if error}<div class="notice error">{error}</div>{/if}
 
@@ -169,7 +189,8 @@
 
     <label class="field">
       Brightness: {Math.round((brightness / 16) * 100)}%
-      <input type="range" min="0" max="16" step="1" value={brightness} oninput={onBrightness} />
+      <input type="range" min="0" max="16" step="any" value={brightnessShown.current}
+        oninput={onBrightness} onchange={onBrightnessEnd} />
     </label>
   </div>
 </div>

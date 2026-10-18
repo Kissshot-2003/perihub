@@ -12,6 +12,7 @@
 
 ### Fixed
 - The keyboard brightness slider now follows SteelSeries + F11/F12 while the lighting page is open, instead of only when the page is opened. The new level is also saved, so it is kept when the keyboard is plugged in again.
+- The brightness slider moves smoothly, both when dragged and when the level changes from the keyboard.
 
 ## 0.1.0 — 2026-10-17
 
