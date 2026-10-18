@@ -63,10 +63,16 @@ pub async fn kb_set_brightness(state: State<'_, AppState>, level: u8) -> CmdResu
         .await
 }
 
+/// Reads the brightness from the keyboard. If the user changed it with SteelSeries + F11/F12,
+/// the saved value follows, so it is not undone when the keyboard is plugged in again.
 #[tauri::command]
 pub async fn kb_read_brightness(state: State<'_, AppState>) -> CmdResult<u8> {
     let manager = state.manager.clone();
-    blocking(move || manager.keyboard()?.call(|k| k.brightness())).await
+    let level = blocking(move || manager.keyboard()?.call(|k| k.brightness())).await?;
+    if state.config.lock().unwrap().keyboard.brightness != level {
+        update_keyboard_config(&state, |c| c.brightness = level)?;
+    }
+    Ok(level)
 }
 
 #[tauri::command]

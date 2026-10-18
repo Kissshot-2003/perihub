@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { api, debounce, errorText, type KeyboardLighting, type Rgb } from "../lib/api";
   import { ZONES } from "../lib/effects";
   import ZoneStrip from "../components/ZoneStrip.svelte";
@@ -32,6 +32,8 @@
   let reverse = $state(false);
   let brightness = $state(16);
   let error = $state<string | null>(null);
+  /** When the slider was last moved, so polling does not fight with the user. */
+  let brightnessTouched = 0;
 
   const lighting = $derived.by((): KeyboardLighting => {
     switch (kind) {
@@ -80,11 +82,24 @@
     loaded = true;
   });
 
+  // Brightness can change at any time from the keyboard: follow it while this page is open.
+  const brightnessPoll = setInterval(async () => {
+    if (!connected || document.hidden || Date.now() - brightnessTouched < 1500) return;
+    try {
+      const level = await api.readBrightness();
+      if (Date.now() - brightnessTouched >= 1500) brightness = level;
+    } catch {
+      /* keyboard busy or unplugged: try again later */
+    }
+  }, 1000);
+  onDestroy(() => clearInterval(brightnessPoll));
+
   function setAll(color: Rgb) {
     zones = Array(ZONES).fill(color);
   }
 
   function onBrightness(event: Event) {
+    brightnessTouched = Date.now();
     brightness = Number((event.target as HTMLInputElement).value);
     pushBrightness(brightness);
   }

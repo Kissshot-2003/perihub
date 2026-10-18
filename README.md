@@ -222,7 +222,7 @@ The UI is in English. More languages are on the roadmap.
 
 ## Known limitations
 
-- **Windows**: built and packaged by CI, and the test suite runs on Windows, but the app has not been tried on a real Windows PC yet. Reports are welcome.
+- **Windows**: first test on a real Windows PC passed (keyboard lighting, key remapping, mouse profiles). Reports from other setups are welcome.
 - **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
 - **Labels to confirm**: the factory functions of SteelSeries + F9/F10, and whether the bottom-right key is Menu or right Win.
 - **Not yet available**:

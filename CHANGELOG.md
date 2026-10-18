@@ -10,6 +10,9 @@
 - The mouse page, sidebar and settings show the connected model instead of assuming the G502 HERO.
 - A mouse that fails to open is no longer retried every 2 seconds unless it is a tested model; plug it in again to retry.
 
+### Fixed
+- The keyboard brightness slider now follows SteelSeries + F11/F12 while the lighting page is open, instead of only when the page is opened. The new level is also saved, so it is kept when the keyboard is plugged in again.
+
 ## 0.1.0 — 2026-10-17
 
 First release.
