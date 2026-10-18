@@ -1,18 +1,24 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-10-18
+
+First version tried on a real Windows PC: keyboard lighting, key remapping and mouse profiles work.
 
 ### Added
 - Experimental, read-only support for 27 more Logitech G mice connected with a USB cable, from libratbag's device list. PeriHub shows their profiles, DPI, buttons and lighting but changes nothing until a model is confirmed to work.
 - The Linux udev rule covers the new mice.
+- Brightness for the mouse's fixed colors.
 
 ### Changed
 - The mouse page, sidebar and settings show the connected model instead of assuming the G502 HERO.
 - A mouse that fails to open is no longer retried every 2 seconds unless it is a tested model; plug it in again to retry.
+- Mouse breathing and color cycle apply to all LED zones at once, so the DPI indicator and the logo stay in sync.
 
 ### Fixed
 - The keyboard brightness slider now follows SteelSeries + F11/F12 while the lighting page is open, instead of only when the page is opened. The new level is also saved, so it is kept when the keyboard is plugged in again.
 - The brightness slider moves smoothly, both when dragged and when the level changes from the keyboard.
+- The key remapping view matches the real Apex 3 TKL: the bottom row ends with Alt, Win, SteelSeries and Ctrl (there is no Menu key), and there are no Print Screen, Scroll Lock and Pause keys.
+- SteelSeries + F9 and F10 are labeled: F9 has no effect, F10 is the microphone mute key.
 
 ## 0.1.0 — 2026-10-17
 

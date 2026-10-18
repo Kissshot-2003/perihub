@@ -53,7 +53,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 | DPI | Up to 5 levels from 100 to 25600 (step 50), default and sniper level, live preview | Mouse memory |
 | Polling rate | 125, 250, 500, 1000 Hz | Mouse memory |
 | Buttons | 11 buttons plus the G-Shift layer: mouse clicks, keys with Ctrl/Shift/Alt/Win/Alt Gr, media keys, DPI up/down/cycle/sniper, profile switching | Mouse memory |
-| Lighting | Logo and DPI indicator: off, fixed, breathing, color cycle, with live preview | Mouse memory |
+| Lighting | Logo and DPI indicator: off, fixed color with brightness, breathing, color cycle (breathing and color cycle stay in sync on both zones), with live preview | Mouse memory |
 
 ### Other Logitech G mice (experimental)
 
@@ -224,7 +224,6 @@ The UI is in English. More languages are on the roadmap.
 
 - **Windows**: first test on a real Windows PC passed (keyboard lighting, key remapping, mouse profiles). Reports from other setups are welcome.
 - **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
-- **Labels to confirm**: the factory functions of SteelSeries + F9/F10, and whether the bottom-right key is Menu or right Win.
 - **Not yet available**:
   - automatic profile switching based on the active game or app;
   - software macros;

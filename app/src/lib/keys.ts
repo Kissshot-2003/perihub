@@ -42,9 +42,11 @@ export function keyLabel(usage: number, layout: LayoutId = prefs.layout): string
   return `0x${usage.toString(16).padStart(2, "0")}`;
 }
 
-/** Factory functions of the SteelSeries layer. The meaning of 1 and 2 is undocumented. */
+/** Factory functions of the SteelSeries layer (1 and 2 confirmed by pressing them on a real keyboard). */
 export function functionLabel(code: number): string {
   switch (code) {
+    case 1: return "No effect (F9)";
+    case 2: return "Mic mute (F10)";
     case 3: return "Brightness –";
     case 4: return "Brightness +";
     case 5: return "Win key lock";
@@ -94,14 +96,16 @@ function row(y: number, items: Row, startX = 0): KeyCap[] {
   return caps;
 }
 
-// Rows that are the same in ANSI and ISO, in key units.
+// Rows that are the same in ANSI and ISO, in key units, as on the real keyboard: there are no
+// Print Screen, Scroll Lock and Pause keys (the volume roller sits there), and the bottom row ends
+// with Alt, Win, SteelSeries and Ctrl.
 const FUNCTION_ROW = row(0, [0x29, { gap: 1 }, 0x3a, 0x3b, 0x3c, 0x3d, { gap: 0.5 }, 0x3e, 0x3f, 0x40, 0x41,
-  { gap: 0.5 }, 0x42, 0x43, 0x44, 0x45, { gap: 0.25 }, 0x46, 0x47, 0x48]);
+  { gap: 0.5 }, 0x42, 0x43, 0x44, 0x45]);
 const NUMBER_ROW = row(1.25, [0x35, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x2d, 0x2e,
   [0x2a, 2], { gap: 0.25 }, 0x49, 0x4a, 0x4b]);
 const NAV_ROW = row(2.25, [0x4c, 0x4d, 0x4e], 15.25);
-const BOTTOM_ROW = row(5.25, [[0xe0, 1.25], [0xe3, 1.25], [0xe2, 1.25], [0x2c, 6.25], [0xe6, 1.25], [0xf0, 1.25],
-  { lock: 0x65, w: 1.25 }, [0xe4, 1.25], { gap: 0.25 }, 0x50, 0x51, 0x4f]);
+const BOTTOM_ROW = row(5.25, [[0xe0, 1.25], [0xe3, 1.25], [0xe2, 1.25], [0x2c, 6.25], [0xe6, 1.25], [0xe7, 1.25],
+  [0xf0, 1.25], [0xe4, 1.25], { gap: 0.25 }, 0x50, 0x51, 0x4f]);
 const LETTERS_TOP = [0x14, 0x1a, 0x08, 0x15, 0x17, 0x1c, 0x18, 0x0c, 0x12, 0x13, 0x2f, 0x30];
 const LETTERS_HOME = [0x04, 0x16, 0x07, 0x09, 0x0a, 0x0b, 0x0d, 0x0e, 0x0f, 0x33, 0x34];
 const LETTERS_BOTTOM = [0x1d, 0x1b, 0x06, 0x19, 0x05, 0x11, 0x10, 0x36, 0x37, 0x38];
