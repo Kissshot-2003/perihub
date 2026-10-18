@@ -158,6 +158,8 @@ PeriHub non modifica il firmware. Usa gli stessi comandi di configurazione dei p
   - Linux: `~/.config/perihub/backups/`
   - Windows: `%APPDATA%\perihub\backups\`
 
+Per segnalare un problema di sicurezza, vedi [SECURITY.md](SECURITY.md).
+
 ## Domande frequenti
 
 **Posso tenere aperti anche GG o G HUB?**
@@ -250,6 +252,7 @@ packaging/linux         regola udev
 
 Segnalazioni di bug, richieste di dispositivi e pull request sono benvenute.
 
+- **Domande e idee**: usa le [Discussions](https://github.com/hex-dump/perihub/discussions).
 - **Bug**: indica il sistema operativo, il dispositivo e cosa ha mostrato l'app.
 - **Nuovi dispositivi**: apri una [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml) con il modello e l'ID USB.
 - **Codice**: prima di aprire una pull request lancia `cargo test`, `cargo clippy` e `npm run check`.
