@@ -68,10 +68,10 @@
   </p>
   {#if error}<div class="notice error">{error}</div>{/if}
 
-  {#each info.led_zones as zone (zone.index)}
+  {#each info.led_zones.filter((z) => z.index < settings.leds.length) as zone (zone.index)}
     {@const effect = settings.leds[zone.index]}
     <div class="card col">
-      <h2>{ledZoneName(zone.location)}</h2>
+      <h2>{ledZoneName(info.product_id, zone.location)}</h2>
       {#if effect.mode === "raw"}
         <p class="muted small">Effect set by another program: pick one to replace it.</p>
       {/if}
@@ -102,6 +102,8 @@
         </div>
       {/if}
     </div>
+  {:else}
+    <div class="notice info">PeriHub cannot control the lighting of this mouse.</div>
   {/each}
 </div>
 

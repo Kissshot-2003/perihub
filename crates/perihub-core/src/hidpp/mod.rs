@@ -2,6 +2,7 @@
 //!
 //! References: libratbag (MIT) and data read from the real device.
 
+pub mod models;
 pub mod profile;
 
 use std::collections::HashMap;
@@ -16,8 +17,6 @@ use profile::LedEffect;
 const REPORT_SHORT: u8 = 0x10;
 const REPORT_LONG: u8 = 0x11;
 const LONG_LEN: usize = 20;
-/// Device index used by devices connected directly over USB (no receiver).
-const DEVICE_INDEX: u8 = 0xFF;
 const SOFTWARE_ID: u8 = 0x0B;
 const TIMEOUT: Duration = Duration::from_millis(1000);
 
@@ -44,6 +43,31 @@ const ALLOWED_FEATURES: &[u16] = &[
     feature::COLOR_LED_EFFECTS,
     feature::ONBOARD_PROFILES,
 ];
+
+/// The only (feature, function) pairs allowed on a read-only device: they read state and
+/// change nothing, not even in RAM.
+const READ_ONLY_CALLS: &[(u16, u8)] = &[
+    (feature::DEVICE_INFO, 0),
+    (feature::DEVICE_INFO, 1),
+    (feature::DEVICE_NAME, 0),
+    (feature::DEVICE_NAME, 1),
+    (feature::ADJUSTABLE_DPI, 1),
+    (feature::ADJUSTABLE_DPI, 2),
+    (feature::REPORT_RATE, 0),
+    (feature::REPORT_RATE, 1),
+    (feature::COLOR_LED_EFFECTS, 0),
+    (feature::COLOR_LED_EFFECTS, 1),
+    (feature::COLOR_LED_EFFECTS, 2),
+    (feature::ONBOARD_PROFILES, 0),
+    (feature::ONBOARD_PROFILES, 2),
+    (feature::ONBOARD_PROFILES, 4),
+    (feature::ONBOARD_PROFILES, 5),
+    (feature::ONBOARD_PROFILES, 0x0B),
+];
+
+fn is_read_call(feature: u16, function: u8) -> bool {
+    READ_ONLY_CALLS.contains(&(feature, function))
+}
 
 /// Mouse memory sectors reserved for the factory profiles (read-only).
 pub const ROM_SECTOR_BASE: u16 = 0x0100;
@@ -88,12 +112,15 @@ pub struct FirmwareEntity {
 
 pub struct HidppDevice {
     dev: HidDevice,
+    device_index: u8,
+    read_only: bool,
     features: HashMap<u16, u8>,
 }
 
 impl HidppDevice {
-    pub fn new(dev: HidDevice) -> Result<Self> {
-        let mut device = Self { dev, features: HashMap::new() };
+    /// `read_only` limits the device to [`READ_ONLY_CALLS`] for the whole session.
+    pub fn new(dev: HidDevice, device_index: u8, read_only: bool) -> Result<Self> {
+        let mut device = Self { dev, device_index, read_only, features: HashMap::new() };
         let (major, _) = device.protocol_version()?;
         if major < 2 {
             return Err(Error::Protocol(format!("HID++ {major}.x is not supported")));
@@ -108,7 +135,7 @@ impl HidppDevice {
         let address = (function << 4) | SOFTWARE_ID;
         let mut packet = [0u8; LONG_LEN];
         packet[0] = REPORT_LONG;
-        packet[1] = DEVICE_INDEX;
+        packet[1] = self.device_index;
         packet[2] = index;
         packet[3] = address;
         packet[4..4 + params.len()].copy_from_slice(params);
@@ -123,7 +150,7 @@ impl HidppDevice {
             }
             let n = self.dev.read_timeout(&mut buf, remaining.as_millis().max(1) as i32)?;
             // The mouse's keyboard/media reports also arrive on this interface: ignore them.
-            if n < 7 || !(buf[0] == REPORT_SHORT || buf[0] == REPORT_LONG) || buf[1] != DEVICE_INDEX {
+            if n < 7 || !(buf[0] == REPORT_SHORT || buf[0] == REPORT_LONG) || buf[1] != self.device_index {
                 continue;
             }
             if buf[2] == index && buf[3] == address {
@@ -157,6 +184,9 @@ impl HidppDevice {
     }
 
     fn call(&mut self, feature: u16, function: u8, params: &[u8]) -> Result<[u8; 16]> {
+        if self.read_only && !is_read_call(feature, function) {
+            return Err(Error::Invalid("this mouse model is read-only until it has been tested with PeriHub".into()));
+        }
         let index = self.feature_index(feature)?;
         self.transact(index, function, params)
     }
@@ -371,5 +401,28 @@ impl HidppDevice {
         }
         self.call(feature::ONBOARD_PROFILES, 8, &[])?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn read_only_devices_cannot_change_anything() {
+        let writes = [
+            (feature::ADJUSTABLE_DPI, 3),
+            (feature::COLOR_LED_EFFECTS, 3),
+            (feature::ONBOARD_PROFILES, 1),
+            (feature::ONBOARD_PROFILES, 3),
+            (feature::ONBOARD_PROFILES, 6),
+            (feature::ONBOARD_PROFILES, 7),
+            (feature::ONBOARD_PROFILES, 8),
+            (feature::ONBOARD_PROFILES, 0x0C),
+        ];
+        for (feature, function) in writes {
+            assert!(!is_read_call(feature, function), "{feature:#06x}/{function}");
+        }
+        assert!(READ_ONLY_CALLS.iter().all(|(feature, _)| ALLOWED_FEATURES.contains(feature)));
     }
 }

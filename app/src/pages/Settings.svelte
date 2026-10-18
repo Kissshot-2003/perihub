@@ -53,7 +53,7 @@
   <div class="card col">
     <h2>Where settings are stored</h2>
     <ul class="small">
-      <li><b>Mouse</b>: DPI, polling, buttons and lighting are stored in the G502's memory and work without PeriHub.</li>
+      <li><b>Mouse</b>: DPI, polling, buttons and lighting are stored in the mouse's memory and work without PeriHub.</li>
       <li><b>Keyboard</b>: the key mapping is stored in the Apex's memory. Lighting is not kept by the keyboard, so PeriHub reapplies it.</li>
       <li>Before every write to a device, a backup is saved in the <code>perihub/backups</code> folder of your user configuration.</li>
     </ul>
@@ -63,7 +63,7 @@
     <h2>Devices</h2>
     <div class="small">
       <div>Apex 3 TKL: {status.keyboard ? `firmware ${status.keyboard.firmware}` : status.keyboard_error ?? "not connected"}</div>
-      <div>G502 HERO: {status.mouse ? status.mouse.firmware.map((f) => `${f.name} ${f.version}`).join(", ") : status.mouse_error ?? "not connected"}</div>
+      <div>{status.mouse?.model ?? "Mouse"}: {status.mouse ? status.mouse.firmware.map((f) => `${f.name} ${f.version}`).join(", ") : status.mouse_error ?? "not connected"}</div>
     </div>
     <p class="muted small">
       Quit SteelSeries GG and Logitech G HUB while using PeriHub: two programs talking to the same device get in each other's way.

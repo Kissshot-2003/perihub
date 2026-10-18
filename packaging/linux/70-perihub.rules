@@ -4,5 +4,60 @@
 
 # SteelSeries Apex 3 TKL
 KERNEL=="hidraw*", ATTRS{idVendor}=="1038", ATTRS{idProduct}=="1622", TAG+="uaccess"
+# Logitech mice (the G502 HERO is tested, the others are read-only until they are)
 # Logitech G502 HERO
 KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c08b", TAG+="uaccess"
+# Logitech G502 Proteus Core
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c07d", TAG+="uaccess"
+# Logitech G502 Proteus Spectrum
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c332", TAG+="uaccess"
+# Logitech G502 HERO Wireless
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c08d", TAG+="uaccess"
+# Logitech G502 X
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c099", TAG+="uaccess"
+# Logitech G502 X Wireless
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c098", TAG+="uaccess"
+# Logitech G502 X PLUS
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c095", TAG+="uaccess"
+# Logitech G Pro
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c085", TAG+="uaccess"
+# Logitech G Pro
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c08c", TAG+="uaccess"
+# Logitech G Pro Wireless
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c088", TAG+="uaccess"
+# Logitech G Pro X Superlight
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c094", TAG+="uaccess"
+# Logitech G102/G103/G203
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c084", TAG+="uaccess"
+# Logitech G102/G103/G203
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c092", TAG+="uaccess"
+# Logitech G102/G103/G203
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c09d", TAG+="uaccess"
+# Logitech G302
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c07f", TAG+="uaccess"
+# Logitech G303
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c080", TAG+="uaccess"
+# Logitech G303 Shroud Edition
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c097", TAG+="uaccess"
+# Logitech G402
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c07e", TAG+="uaccess"
+# Logitech G403
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c083", TAG+="uaccess"
+# Logitech G403 HERO
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c08f", TAG+="uaccess"
+# Logitech G403 Wireless
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c082", TAG+="uaccess"
+# Logitech G703
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c087", TAG+="uaccess"
+# Logitech G703 HERO
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c090", TAG+="uaccess"
+# Logitech G705
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c096", TAG+="uaccess"
+# Logitech G900
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c081", TAG+="uaccess"
+# Logitech G903
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c086", TAG+="uaccess"
+# Logitech G903 HERO
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c091", TAG+="uaccess"
+# Logitech MX518
+KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c08e", TAG+="uaccess"

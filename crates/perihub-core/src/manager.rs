@@ -1,5 +1,6 @@
 //! Detects supported devices when they are plugged in or unplugged.
 
+use std::ffi::CString;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -11,6 +12,7 @@ use crate::apex::Apex3Tkl;
 use crate::config::KeyboardConfig;
 use crate::error::{Error, Result};
 use crate::hidpp::HidppDevice;
+use crate::hidpp::models::{self, MouseModel};
 use crate::keyboard::{KeyboardInfo, KeyboardTask};
 use crate::mouse::{MouseInfo, MouseTask};
 use crate::worker::Worker;
@@ -20,7 +22,6 @@ const POLL_INTERVAL: Duration = Duration::from_secs(2);
 const STEELSERIES: u16 = 0x1038;
 const APEX_3_TKL: u16 = 0x1622;
 const LOGITECH: u16 = 0x046D;
-const G502_HERO: u16 = 0xC08B;
 
 fn is_keyboard_config_interface(d: &DeviceInfo) -> bool {
     d.vendor_id() == STEELSERIES
@@ -29,12 +30,12 @@ fn is_keyboard_config_interface(d: &DeviceInfo) -> bool {
         && ((d.usage_page() == 0xFFC0 && d.usage() == 1) || d.usage_page() == 0)
 }
 
-/// "Long" HID++ collection (report 0x11). On Windows it has a separate path from the short one.
-fn is_mouse_hidpp_interface(d: &DeviceInfo) -> bool {
-    d.vendor_id() == LOGITECH
-        && d.product_id() == G502_HERO
-        && d.interface_number() == 1
-        && ((d.usage_page() == 0xFF00 && d.usage() == 2) || d.usage_page() == 0)
+/// "Long" HID++ collection (report 0x11) of a known mouse. On Windows it has a separate path
+/// from the short one.
+fn mouse_hidpp_interface(d: &DeviceInfo) -> Option<&'static MouseModel> {
+    let long_collection =
+        (d.usage_page() == 0xFF00 && d.usage() == 2) || (d.usage_page() == 0 && d.interface_number() == 1);
+    if d.vendor_id() == LOGITECH && long_collection { models::find(d.product_id()) } else { None }
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -52,6 +53,10 @@ struct Slots {
     mouse: Option<(Worker<MouseTask>, MouseInfo)>,
     keyboard_error: Option<String>,
     mouse_error: Option<String>,
+    /// Path of the open mouse, to notice when it goes away while another one is connected.
+    mouse_path: Option<CString>,
+    /// Unverified mouse that failed to open: not retried until it is plugged in again.
+    mouse_failed: Option<CString>,
 }
 
 pub type Listener = Box<dyn Fn(&DeviceStatus) + Send + Sync>;
@@ -104,7 +109,8 @@ impl Manager {
             return false;
         }
         let keyboard = api.device_list().find(|d| is_keyboard_config_interface(d)).cloned();
-        let mouse = api.device_list().find(|d| is_mouse_hidpp_interface(d)).cloned();
+        let mice: Vec<(DeviceInfo, &'static MouseModel)> =
+            api.device_list().filter_map(|d| mouse_hidpp_interface(d).map(|m| (d.clone(), m))).collect();
         let mut changed = false;
 
         let keyboard_present = {
@@ -134,25 +140,44 @@ impl Manager {
             slots.keyboard_error = error;
         }
 
-        let mouse_present = {
+        let connected = |path: &Option<CString>| mice.iter().any(|(d, _)| Some(d.path()) == path.as_deref());
+        let candidate = {
             let mut slots = self.slots.lock().unwrap();
-            if slots.mouse.as_ref().is_some_and(|(w, _)| !w.is_alive() || mouse.is_none()) {
-                slots.mouse = None;
-                changed = true;
+            if slots.mouse.as_ref().is_some_and(|(w, _)| !w.is_alive()) || !connected(&slots.mouse_path) {
+                changed |= slots.mouse.take().is_some();
+                slots.mouse_path = None;
             }
-            slots.mouse.is_some()
+            if !connected(&slots.mouse_failed) {
+                slots.mouse_failed = None;
+            }
+            if slots.mouse.is_some() {
+                None
+            } else {
+                // A tested model wins if more than one supported mouse is connected.
+                let failed = slots.mouse_failed.clone();
+                mice.iter().filter(|(d, _)| Some(d.path()) != failed.as_deref()).max_by_key(|(_, m)| m.verified)
+            }
         };
-        if let (false, Some(info)) = (mouse_present, &mouse) {
-            let result =
-                info.open_device(api).map_err(Error::from).and_then(HidppDevice::new).and_then(MouseTask::open);
+        if let Some((info, model)) = candidate {
+            let result = info
+                .open_device(api)
+                .map_err(Error::from)
+                .and_then(|dev| HidppDevice::new(dev, model.device_index, !model.verified))
+                .and_then(|dev| MouseTask::open(dev, model));
             let mut slots = self.slots.lock().unwrap();
             let error = match result {
                 Ok(task) => {
-                    let info = task.info.clone();
-                    slots.mouse = Some((Worker::spawn("perihub-mouse", task), info));
+                    let mouse = task.info.clone();
+                    slots.mouse = Some((Worker::spawn("perihub-mouse", task), mouse));
+                    slots.mouse_path = Some(info.path().to_owned());
                     None
                 }
-                Err(error) => Some(open_error_message(error)),
+                Err(error) => {
+                    if !model.verified && !is_permission_error(&error) {
+                        slots.mouse_failed = Some(info.path().to_owned());
+                    }
+                    Some(format!("{}: {}", model.name, open_error_message(error)))
+                }
             };
             changed |= slots.mouse.is_some() || slots.mouse_error != error;
             slots.mouse_error = error;
@@ -184,11 +209,15 @@ impl Manager {
     }
 }
 
-fn open_error_message(error: Error) -> String {
+fn is_permission_error(error: &Error) -> bool {
     let text = error.to_string();
-    if text.contains("Permission denied") || text.contains("ermesso") || text.contains("ccess is denied") {
+    text.contains("Permission denied") || text.contains("ermesso") || text.contains("ccess is denied")
+}
+
+fn open_error_message(error: Error) -> String {
+    if is_permission_error(&error) {
         "permission denied: install the PeriHub udev rule (see the README)".into()
     } else {
-        text
+        error.to_string()
     }
 }

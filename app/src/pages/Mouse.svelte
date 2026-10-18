@@ -128,7 +128,7 @@
 </script>
 
 <header class="col tight">
-  <h1>Logitech G502 HERO</h1>
+  <h1>{info ? `Logitech ${info.model}` : "Logitech mouse"}</h1>
   <span class="muted small">
     {#if info}
       Firmware {info.firmware.map((f) => `${f.name} ${f.version}`).join(" · ")}
@@ -140,7 +140,18 @@
 </header>
 
 {#if connectError && !info}<div class="notice error">{connectError}</div>{/if}
-{#if info && !info.writable}
+{#if info && !info.verified}
+  <div class="notice info">
+    <b>Experimental support.</b> PeriHub has not been tested on the {info.model} yet, so it only reads the mouse:
+    you can look at its profiles, but nothing can be changed. If you own one, a device request on PeriHub's GitHub
+    page helps get it fully supported.
+  </div>
+  {#if info.host_mode}
+    <div class="notice info">
+      Another program, such as G HUB, left this mouse under software control: it is not using the profiles shown here.
+    </div>
+  {/if}
+{:else if info && !info.writable}
   <div class="notice error">This model uses a profile format that has not been verified yet: editing is disabled.</div>
 {/if}
 
@@ -158,7 +169,7 @@
           {#if profile.number === mouse.active_profile}
             <span class="chip active">Active</span>
           {:else}
-            <button class="ghost tiny" disabled={!!busy || !profile.enabled} onclick={() => activate(profile.number)}>
+            <button class="ghost tiny" disabled={!!busy || !profile.enabled || !info.verified} onclick={() => activate(profile.number)}>
               Make active
             </button>
           {/if}
@@ -186,7 +197,8 @@
     <button class:active={tab === "lighting"} onclick={() => changeTab("lighting")}>Lighting</button>
   </div>
 
-  <section>
+  <!-- Unverified models are read-only: every control in the editor is disabled. -->
+  <fieldset disabled={!info.verified}>
     {#if tab === "performance"}
       <MousePerformance {info} bind:settings={draft} onpreview={() => (previewing = true)} />
     {:else if tab === "buttons"}
@@ -194,7 +206,7 @@
     {:else}
       <MouseLighting {info} bind:settings={draft} onpreview={() => (previewing = true)} />
     {/if}
-  </section>
+  </fieldset>
 
   <footer class="row">
     <ConfirmButton class="danger" disabled={!!busy || !info.writable} onconfirm={factory} confirmLabel="Reset this profile?">
@@ -281,7 +293,10 @@
     margin-bottom: 12px;
   }
 
-  section {
+  fieldset {
+    border: none;
+    margin: 0;
+    min-width: 0;
     padding: 20px 0 90px;
   }
 

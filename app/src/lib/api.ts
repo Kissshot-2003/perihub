@@ -98,7 +98,15 @@ export interface LedZone {
 }
 
 export interface MouseInfo {
+  product_id: number;
+  /** Model name from PeriHub's list, e.g. "G502 HERO". */
+  model: string;
+  /** Name reported by the mouse itself. */
   name: string;
+  /** Tested with PeriHub: unverified models are read-only. */
+  verified: boolean;
+  /** Another program left the mouse under software control. */
+  host_mode: boolean;
   firmware: { kind: number; name: string; version: string }[];
   dpi: { min: number; max: number; step: number; list: number[] };
   report_rates_ms: number[];

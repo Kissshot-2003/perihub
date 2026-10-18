@@ -55,6 +55,10 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 | Buttons | 11 buttons plus the G-Shift layer: mouse clicks, keys with Ctrl/Shift/Alt/Win/Alt Gr, media keys, DPI up/down/cycle/sniper, profile switching | Mouse memory |
 | Lighting | Logo and DPI indicator: off, fixed, breathing, color cycle, with live preview | Mouse memory |
 
+### Other Logitech G mice (experimental)
+
+27 more Logitech mice are recognized when connected with a USB cable (see [Supported hardware](#supported-hardware)). They have not been tested with PeriHub yet, so it only reads them: you can see their profiles, DPI levels, buttons and lighting, but nothing can be changed until someone confirms that the model works.
+
 <table>
   <tr>
     <td><img src="docs/screenshots/keyboard-keys.png" alt="Key remapping"></td>
@@ -72,6 +76,46 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 |---|---|---|
 | SteelSeries Apex 3 TKL | `1038:1622` (firmware 3.0.4) | ✅ Supported, tested on real hardware |
 | Logitech G502 HERO | `046d:c08b` | ✅ Supported, tested on real hardware |
+| Other Logitech G mice, over a USB cable | listed below | 🧪 Experimental, read-only |
+
+<details>
+<summary>Experimental Logitech mice</summary>
+
+The list comes from [libratbag](https://github.com/libratbag/libratbag). Wireless models are recognized only when connected with their USB cable: LIGHTSPEED receivers are not supported yet.
+
+| Mouse | USB ID |
+|---|---|
+| Logitech G502 Proteus Core | `046d:c07d` |
+| Logitech G502 Proteus Spectrum | `046d:c332` |
+| Logitech G502 HERO Wireless | `046d:c08d` |
+| Logitech G502 X | `046d:c099` |
+| Logitech G502 X Wireless | `046d:c098` |
+| Logitech G502 X PLUS | `046d:c095` |
+| Logitech G Pro | `046d:c085` |
+| Logitech G Pro | `046d:c08c` |
+| Logitech G Pro Wireless | `046d:c088` |
+| Logitech G Pro X Superlight | `046d:c094` |
+| Logitech G102/G103/G203 | `046d:c084` |
+| Logitech G102/G103/G203 | `046d:c092` |
+| Logitech G102/G103/G203 | `046d:c09d` |
+| Logitech G302 | `046d:c07f` |
+| Logitech G303 | `046d:c080` |
+| Logitech G303 Shroud Edition | `046d:c097` |
+| Logitech G402 | `046d:c07e` |
+| Logitech G403 | `046d:c083` |
+| Logitech G403 HERO | `046d:c08f` |
+| Logitech G403 Wireless | `046d:c082` |
+| Logitech G703 | `046d:c087` |
+| Logitech G703 HERO | `046d:c090` |
+| Logitech G705 | `046d:c096` |
+| Logitech G900 | `046d:c081` |
+| Logitech G903 | `046d:c086` |
+| Logitech G903 HERO | `046d:c091` |
+| Logitech MX518 | `046d:c08e` |
+
+If you own one of these, please open a [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml) and tell us what PeriHub shows: a model becomes fully supported once someone confirms it works.
+
+</details>
 
 PeriHub only talks to the devices listed here. It never sends commands to anything it does not recognize.
 
@@ -79,7 +123,7 @@ PeriHub only talks to the devices listed here. It never sends commands to anythi
 
 PeriHub is meant to support much more than these two devices. The plan is to add hardware over time, starting with devices that share protocols PeriHub already speaks:
 
-- **Logitech G mice using HID++ 2.0.** Most recent Logitech G mice use the same protocol as the G502 HERO (DPI, polling rate, onboard profiles, LEDs), so they mostly need their USB IDs and a check of the profile format.
+- **Logitech G mice using HID++ 2.0.** 27 more models are already recognized in read-only mode. Next: enable editing as owners confirm them, and support LIGHTSPEED wireless receivers.
 - **Other SteelSeries keyboards**, such as the rest of the Apex range.
 - **SteelSeries mice.**
 - **Headsets and other peripherals**, where the hardware exposes useful settings.
@@ -151,6 +195,7 @@ PeriHub does not modify firmware. It uses the same configuration commands as the
 - **Verified writes.**
   - Mouse: profiles are edited on top of the original sector bytes, so fields PeriHub does not manage stay intact. Every written sector is read back and compared byte by byte.
   - Keyboard: the key mapping is written to RAM first and only saved to memory if the read-back matches; otherwise it is rolled back.
+- **Untested mice are read-only.** For a mouse that has not been verified, the core only allows HID++ functions that read state, and it does not even take the mouse out of software mode.
 - **Factory profiles are read-only.** The mouse's ROM profiles are never written and are used for restoring.
 - **Backups.** Before every write to a device's memory, PeriHub saves the previous state in
   - Linux: `~/.config/perihub/backups/`
@@ -178,6 +223,7 @@ The UI is in English. More languages are on the roadmap.
 ## Known limitations
 
 - **Windows**: built and packaged by CI, and the test suite runs on Windows, but the app has not been tried on a real Windows PC yet. Reports are welcome.
+- **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
 - **Labels to confirm**: the factory functions of SteelSeries + F9/F10, and whether the bottom-right key is Menu or right Win.
 - **Not yet available**:
   - automatic profile switching based on the active game or app;
@@ -233,7 +279,7 @@ cargo run -p perihub-cli -- keyboard light '{"type":"wave","period_ms":3000,"rev
 ```
 crates/perihub-core     Rust library: protocols, effects, device detection, configuration
   src/apex/             SteelSeries Apex 3 TKL: RGB (output reports) and key mapping (feature reports)
-  src/hidpp/            Logitech HID++ 2.0 and the onboard profile format (CRC-CCITT)
+  src/hidpp/            Logitech HID++ 2.0, the onboard profile format (CRC-CCITT) and the list of mice
   src/effects.rs        lighting effects rendered on the PC
   src/manager.rs        device hotplug
   src/worker.rs         one thread per device, so requests never interleave
@@ -267,7 +313,7 @@ Donations are entirely optional and don't unlock anything. They support the deve
 The protocols were reconstructed thanks to the work of:
 
 - [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB): documentation of the 8-zone Apex lighting protocol. No code was copied.
-- [libratbag](https://github.com/libratbag/libratbag): Logitech HID++ 2.0 and onboard profiles (MIT).
+- [libratbag](https://github.com/libratbag/libratbag): Logitech HID++ 2.0, onboard profiles and the list of Logitech mice (MIT).
 - [gorkemgun/apex-3-tkl](https://github.com/gorkemgun/apex-3-tkl): Apex 3 TKL key mapping (MIT).
 
 PeriHub is released under the [MIT license](LICENSE). It is not affiliated with SteelSeries or Logitech; product names belong to their respective owners.

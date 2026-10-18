@@ -55,7 +55,7 @@
     <button class:active={page === "mouse"} onclick={() => go("mouse")}>
       <span class="dot" class:on={!!status.mouse}></span>
       <span class="col tight">
-        <span>G502 HERO</span>
+        <span>{status.mouse?.model ?? "Logitech mouse"}</span>
         <span class="small muted">{status.mouse ? "Connected" : "Not connected"}</span>
       </span>
     </button>

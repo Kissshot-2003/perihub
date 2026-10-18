@@ -98,13 +98,17 @@
   <div class="card col">
     <h2>Polling rate</h2>
     <p class="muted small">How many times per second the mouse reports its position. 1000 Hz is recommended for gaming.</p>
-    <div class="segmented">
-      {#each [...info.report_rates_ms].sort((a, b) => a - b) as ms (ms)}
-        <button class:active={settings.report_rate_ms === ms} onclick={() => (settings.report_rate_ms = ms)}>
-          {reportRateLabel(ms)}
-        </button>
-      {/each}
-    </div>
+    {#if info.report_rates_ms.length > 0}
+      <div class="segmented">
+        {#each [...info.report_rates_ms].sort((a, b) => a - b) as ms (ms)}
+          <button class:active={settings.report_rate_ms === ms} onclick={() => (settings.report_rate_ms = ms)}>
+            {reportRateLabel(ms)}
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <div class="notice info">PeriHub cannot change the polling rate of this mouse yet.</div>
+    {/if}
   </div>
 </div>
 

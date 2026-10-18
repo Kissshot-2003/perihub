@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Experimental, read-only support for 27 more Logitech G mice connected with a USB cable, from libratbag's device list. PeriHub shows their profiles, DPI, buttons and lighting but changes nothing until a model is confirmed to work.
+- The Linux udev rule covers the new mice.
+
+### Changed
+- The mouse page, sidebar and settings show the connected model instead of assuming the G502 HERO.
+- A mouse that fails to open is no longer retried every 2 seconds unless it is a tested model; plug it in again to retry.
+
 ## 0.1.0 — 2026-10-17
 
 First release.

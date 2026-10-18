@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api, type ButtonAction, type KeyInfo, type MouseInfo, type ProfileSettings } from "../lib/api";
-  import { MOUSE_BUTTON_NAMES } from "../lib/keys";
+  import { mouseButtonName } from "../lib/keys";
   import ButtonActionEditor from "../components/ButtonActionEditor.svelte";
 
   interface Props {
@@ -47,7 +47,7 @@
   <div class="card buttons">
     {#each list as action, i (i)}
       <div class="name">
-        <strong>{MOUSE_BUTTON_NAMES[i] ?? `Button ${i + 1}`}</strong>
+        <strong>{mouseButtonName(info.product_id, i)}</strong>
         <span class="small muted">Button {i + 1}</span>
       </div>
       <ButtonActionEditor {action} {keys} allowDisabledHint={layer === "gshift"} onchange={(a) => update(i, a)} />

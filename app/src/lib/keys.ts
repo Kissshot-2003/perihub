@@ -138,7 +138,10 @@ export const LAYOUT_HEIGHT = 6.25;
 
 // ---- Mouse ----
 
-export const MOUSE_BUTTON_NAMES = [
+export const G502_HERO = 0xc08b;
+
+/** Labels of the G502 HERO's buttons; other models get generic names. */
+const G502_BUTTON_NAMES = [
   "Left click",
   "Right click",
   "Wheel click",
@@ -151,6 +154,10 @@ export const MOUSE_BUTTON_NAMES = [
   "Wheel tilt right",
   "Wheel tilt left",
 ];
+
+export function mouseButtonName(productId: number, index: number): string {
+  return (productId === G502_HERO ? G502_BUTTON_NAMES[index] : undefined) ?? `Button ${index + 1}`;
+}
 
 export const MOUSE_CLICKS: { button: number; label: string }[] = [
   { button: 1, label: "Left click" },
@@ -200,9 +207,11 @@ export const MODIFIERS: { bit: number; label: string }[] = [
 ];
 
 /** LED zone names by HID++ location (1 = primary, 2 = logo). */
-export function ledZoneName(location: number): string {
-  if (location === 1) return "DPI indicator";
-  if (location === 2) return "G logo";
+export function ledZoneName(productId: number, location: number): string {
+  if (productId === G502_HERO && location === 1) return "DPI indicator";
+  if (productId === G502_HERO && location === 2) return "G logo";
+  if (location === 1) return "Main lighting";
+  if (location === 2) return "Logo";
   return `Zone ${location}`;
 }
 

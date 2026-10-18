@@ -6,6 +6,7 @@ use serde::Serialize;
 
 use crate::config::write_backup;
 use crate::error::{Error, Result};
+use crate::hidpp::models::MouseModel;
 use crate::hidpp::profile::{self, LedEffect, ProfileSettings};
 use crate::hidpp::{DpiCapabilities, FirmwareEntity, HidppDevice, LedZone, OnboardInfo, ROM_SECTOR_BASE};
 use crate::worker::DeviceTask;
@@ -17,7 +18,15 @@ const ONBOARD_MODE: u8 = 1;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MouseInfo {
+    pub product_id: u16,
+    /// Model name from PeriHub's list, e.g. "G502 HERO".
+    pub model: String,
+    /// Name reported by the mouse itself.
     pub name: String,
+    /// Tested with PeriHub: unverified models are read-only.
+    pub verified: bool,
+    /// Another program left the mouse under software control, so its onboard profiles are not in use.
+    pub host_mode: bool,
     pub firmware: Vec<FirmwareEntity>,
     pub dpi: DpiCapabilities,
     pub report_rates_ms: Vec<u8>,
@@ -43,30 +52,46 @@ pub struct MouseState {
 
 pub struct MouseTask {
     dev: HidppDevice,
+    model: &'static MouseModel,
     pub info: MouseInfo,
 }
 
+/// Features that some mice lack (no LEDs, a different polling rate feature) leave an empty list.
+fn missing_as_empty<T>(result: Result<Vec<T>>) -> Result<Vec<T>> {
+    match result {
+        Err(Error::FeatureMissing(_)) => Ok(Vec::new()),
+        other => other,
+    }
+}
+
 impl MouseTask {
-    pub fn open(mut dev: HidppDevice) -> Result<Self> {
+    pub fn open(mut dev: HidppDevice, model: &'static MouseModel) -> Result<Self> {
         let onboard = dev.onboard_info()?;
         if onboard.memory_model != 1 || onboard.macro_format != 1 {
             return Err(Error::Protocol("onboard profile memory uses an unknown format".into()));
         }
         // If another program left the mouse in host mode, switch back to the onboard profiles.
-        if dev.onboard_mode()? != ONBOARD_MODE {
+        // Unverified models are only read: the interface explains the situation instead.
+        let mut host_mode = dev.onboard_mode()? != ONBOARD_MODE;
+        if host_mode && model.verified {
             log::info!("mouse in host mode: switching to onboard profiles");
             dev.set_onboard_mode(ONBOARD_MODE)?;
+            host_mode = false;
         }
         let info = MouseInfo {
+            product_id: model.product_id,
+            model: model.name.into(),
             name: dev.device_name()?,
+            verified: model.verified,
+            host_mode,
             firmware: dev.firmware()?,
             dpi: dev.dpi_capabilities(0)?,
-            report_rates_ms: dev.report_rates()?,
-            led_zones: dev.led_zones()?,
-            writable: WRITABLE_PROFILE_FORMATS.contains(&onboard.profile_format),
+            report_rates_ms: missing_as_empty(dev.report_rates())?,
+            led_zones: missing_as_empty(dev.led_zones())?,
+            writable: model.verified && WRITABLE_PROFILE_FORMATS.contains(&onboard.profile_format),
             onboard,
         };
-        Ok(Self { dev, info })
+        Ok(Self { dev, model, info })
     }
 
     fn sector_size(&self) -> u16 {
@@ -139,7 +164,7 @@ impl MouseTask {
             files.push((format!("sector_{sector:04x}.bin"), self.dev.read_sector(sector, self.sector_size())?));
         }
         let refs: Vec<(&str, &[u8])> = files.iter().map(|(n, d)| (n.as_str(), d.as_slice())).collect();
-        let dir = write_backup("g502", label, &refs)?;
+        let dir = write_backup(&self.model.backup_dir(), label, &refs)?;
         log::info!("mouse backup saved to {}", dir.display());
         Ok(())
     }
