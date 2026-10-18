@@ -3,6 +3,7 @@
 //! RGB protocol reconstructed from the OpenRGB documentation; key map from the
 //! gorkemgun/apex-3-tkl project (MIT). The code is written from scratch.
 
+pub mod input;
 pub mod keys;
 
 use std::collections::BTreeMap;

@@ -41,7 +41,16 @@ pub enum KeyboardLighting {
     },
     /// The keyboard's built-in rainbow (does not need the app running).
     HardwareRainbow,
+    /// The zone of each pressed key lights up and fades back to the base color.
+    Reactive {
+        base: Rgb,
+        flash: Rgb,
+        fade_ms: u32,
+    },
 }
+
+/// No key pressed recently, for effects that do not react to keys.
+pub const NO_PRESSES: [Option<Duration>; ZONES] = [None; ZONES];
 
 impl Default for KeyboardLighting {
     fn default() -> Self {
@@ -61,7 +70,17 @@ impl KeyboardLighting {
         matches!(self, Self::Breathing { .. } | Self::ColorCycle { .. } | Self::Wave { .. })
     }
 
-    pub fn frame(&self, elapsed: Duration) -> Frame {
+    /// How long a pressed zone takes to fade back, for effects that react to keys.
+    pub fn fade(&self) -> Option<Duration> {
+        match self {
+            Self::Reactive { fade_ms, .. } => Some(Duration::from_millis(u64::from((*fade_ms).max(50)))),
+            _ => None,
+        }
+    }
+
+    /// Colors at `elapsed` since the effect started; `since_press` is the time since the last key
+    /// press in each zone (only used by the reactive effect).
+    pub fn frame(&self, elapsed: Duration, since_press: &[Option<Duration>; ZONES]) -> Frame {
         let phase = |period_ms: u32| {
             let period = period_ms.max(200) as f32 / 1000.0;
             (elapsed.as_secs_f32() / period).fract()
@@ -85,6 +104,13 @@ impl KeyboardLighting {
                 })
             }
             Self::HardwareRainbow => return Frame::HardwareRainbow,
+            Self::Reactive { base, flash, .. } => {
+                let fade = self.fade().unwrap_or_default();
+                std::array::from_fn(|i| match since_press[i] {
+                    Some(t) if t < fade => flash.lerp(*base, t.as_secs_f32() / fade.as_secs_f32()),
+                    _ => *base,
+                })
+            }
         })
     }
 }
@@ -96,7 +122,7 @@ mod tests {
     #[test]
     fn gradient_ends_match_inputs() {
         let lighting = KeyboardLighting::Gradient { from: Rgb::new(255, 0, 0), to: Rgb::new(0, 0, 255) };
-        let Frame::Colors(colors) = lighting.frame(Duration::ZERO) else { panic!() };
+        let Frame::Colors(colors) = lighting.frame(Duration::ZERO, &NO_PRESSES) else { panic!() };
         assert_eq!(colors[0], Rgb::new(255, 0, 0));
         assert_eq!(colors[ZONES - 1], Rgb::new(0, 0, 255));
     }
@@ -104,8 +130,20 @@ mod tests {
     #[test]
     fn breathing_reaches_full_brightness_at_half_period() {
         let lighting = KeyboardLighting::Breathing { colors: [Rgb::WHITE; ZONES], period_ms: 2000 };
-        let Frame::Colors(colors) = lighting.frame(Duration::from_millis(1000)) else { panic!() };
+        let Frame::Colors(colors) = lighting.frame(Duration::from_millis(1000), &NO_PRESSES) else { panic!() };
         assert_eq!(colors[0], Rgb::WHITE);
+    }
+
+    #[test]
+    fn reactive_zone_fades_back_to_base() {
+        let lighting = KeyboardLighting::Reactive { base: Rgb::BLACK, flash: Rgb::WHITE, fade_ms: 1000 };
+        let mut presses = NO_PRESSES;
+        presses[2] = Some(Duration::ZERO);
+        presses[3] = Some(Duration::from_millis(2000));
+        let Frame::Colors(colors) = lighting.frame(Duration::ZERO, &presses) else { panic!() };
+        assert_eq!(colors[2], Rgb::WHITE);
+        assert_eq!(colors[3], Rgb::BLACK);
+        assert_eq!(colors[0], Rgb::BLACK);
     }
 
     #[test]

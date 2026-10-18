@@ -41,7 +41,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 
 | Feature | Details | Stored in |
 |---|---|---|
-| 8-zone lighting | Static (one color per zone), gradient, breathing, color cycle, wave, built-in rainbow, off | PC (PeriHub reapplies it whenever the keyboard is connected) |
+| 8-zone lighting | Static (one color per zone), gradient, breathing, color cycle, wave, reactive (the zone of each pressed key lights up, Linux only for now), built-in rainbow, off | PC (PeriHub reapplies it whenever the keyboard is connected) |
 | Brightness | 0–100% in 17 steps, kept in sync with SteelSeries + F11/F12 | PC |
 | Key remapping | Any key, on both the normal layer and the "SteelSeries key held" layer, with the US, UK, Italian, German, French, Spanish, Portuguese, Swedish/Finnish, Norwegian and Danish layouts | **Keyboard memory**: works without PeriHub |
 
@@ -211,6 +211,7 @@ PeriHub does not modify firmware. It uses the same configuration commands as the
   - Keyboard: the key mapping is written to RAM first and only saved to memory if the read-back matches; otherwise it is rolled back.
 - **Untested mice are read-only.** For a mouse that has not been verified, the core only allows HID++ functions that read state, and it does not even take the mouse out of software mode.
 - **Factory profiles are read-only.** The mouse's ROM profiles are never written and are used for restoring.
+- **Key presses stay on your PC.** Only the reactive lighting effect reads key presses, only while it is on, and only from the Apex 3 TKL. PeriHub keeps nothing but the time of the last press in each lighting zone: which keys you press is never stored, logged or sent anywhere. Note that on Linux the udev rule gives programs running as your user access to all of the Apex's HID interfaces, including the ones that report key presses.
 - **Backups.** Before every write to a device's memory, PeriHub saves the previous state in
   - Linux: `~/.config/perihub/backups/`
   - Windows: `%APPDATA%\perihub\backups\`
@@ -241,7 +242,7 @@ The UI is in English. More languages are on the roadmap.
 - **App profiles** detect the app in focus on Windows and on Hyprland only. They switch lighting and mouse profiles, not key mappings, because changing those writes the keyboard's memory.
 - **Not yet available**:
   - software macros;
-  - reactive (per-keypress) lighting;
+  - reactive lighting on Windows (it works on Linux);
   - GameSense compatibility.
 - **Out of scope**: SteelSeries Sonar and Moments, G HUB Lua scripts.
 

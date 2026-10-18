@@ -12,7 +12,8 @@ export type KeyboardLighting =
   | { type: "breathing"; colors: Rgb[]; period_ms: number }
   | { type: "color_cycle"; period_ms: number }
   | { type: "wave"; period_ms: number; reverse: boolean }
-  | { type: "hardware_rainbow" };
+  | { type: "hardware_rainbow" }
+  | { type: "reactive"; base: Rgb; flash: Rgb; fade_ms: number };
 
 export interface KeyboardConfig {
   lighting: KeyboardLighting;

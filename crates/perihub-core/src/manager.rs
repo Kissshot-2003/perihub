@@ -13,7 +13,7 @@ use crate::config::KeyboardConfig;
 use crate::error::{Error, Result};
 use crate::hidpp::HidppDevice;
 use crate::hidpp::models::{self, MouseModel};
-use crate::keyboard::{KeyboardInfo, KeyboardTask};
+use crate::keyboard::{KeyInterfaces, KeyboardInfo, KeyboardTask};
 use crate::mouse::{MouseInfo, MouseTask};
 use crate::worker::Worker;
 
@@ -109,6 +109,14 @@ impl Manager {
             return false;
         }
         let keyboard = api.device_list().find(|d| is_keyboard_config_interface(d)).cloned();
+        let key_interface = |number| {
+            api.device_list()
+                .find(|d| {
+                    d.vendor_id() == STEELSERIES && d.product_id() == APEX_3_TKL && d.interface_number() == number
+                })
+                .map(|d| d.path().to_owned())
+        };
+        let key_interfaces = KeyInterfaces { boot: key_interface(0), bitmap: key_interface(2) };
         let mice: Vec<(DeviceInfo, &'static MouseModel)> =
             api.device_list().filter_map(|d| mouse_hidpp_interface(d).map(|m| (d.clone(), m))).collect();
         let mut changed = false;
@@ -126,7 +134,7 @@ impl Manager {
             let result = info
                 .open_device(api)
                 .map_err(Error::from)
-                .and_then(|dev| KeyboardTask::open(Apex3Tkl::new(dev), &config));
+                .and_then(|dev| KeyboardTask::open(Apex3Tkl::new(dev), &config, key_interfaces));
             let mut slots = self.slots.lock().unwrap();
             let error = match result {
                 Ok(task) => {

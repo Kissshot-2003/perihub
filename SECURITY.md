@@ -22,6 +22,7 @@ In scope:
 
 - anything that makes PeriHub send a command, HID++ feature, memory write or key code outside the allow-lists described in the README's [Safety](README.md#safety) section, for example in a way that could corrupt a device;
 - the Linux udev rule (`packaging/linux/70-perihub.rules`) granting access to more devices or users than intended;
+- key presses read for the reactive lighting effect being kept, logged or exposed in any way;
 - the desktop app exposing commands or permissions beyond what its interface needs;
 - the installers and release files.
 

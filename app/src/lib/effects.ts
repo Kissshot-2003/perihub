@@ -51,6 +51,15 @@ export function previewFrame(lighting: KeyboardLighting, elapsedMs: number): str
     }
     case "color_cycle":
       return Array(ZONES).fill(css(hsv(phase(elapsedMs, lighting.period_ms), 1, 1)));
+    case "reactive": {
+      // Preview: one zone after the other lights up and fades, as if keys were typed left to right.
+      const fade = Math.max(50, lighting.fade_ms);
+      const zone = Math.floor(elapsedMs / fade) % ZONES;
+      const t = (elapsedMs % fade) / fade;
+      const [base, flash] = [parse(lighting.base), parse(lighting.flash)];
+      return Array.from({ length: ZONES }, (_, i) =>
+        css(i === zone ? [0, 1, 2].map((c) => flash[c] + (base[c] - flash[c]) * t) as [number, number, number] : base));
+    }
     case "wave":
     case "hardware_rainbow": {
       const period = lighting.type === "wave" ? lighting.period_ms : 4000;
