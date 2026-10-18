@@ -18,7 +18,7 @@ First version tried on a real Windows PC: keyboard lighting, key remapping and m
 - The keyboard brightness slider now follows SteelSeries + F11/F12 while the lighting page is open, instead of only when the page is opened. The new level is also saved, so it is kept when the keyboard is plugged in again.
 - The brightness slider moves smoothly, both when dragged and when the level changes from the keyboard.
 - The key remapping view matches the real Apex 3 TKL: the bottom row ends with Alt, Win, SteelSeries and Ctrl (there is no Menu key), and there are no Print Screen, Scroll Lock and Pause keys.
-- SteelSeries + F9 and F10 are labeled: F9 has no effect, F10 is the microphone mute key.
+- SteelSeries + F10 is labeled as the microphone mute key; SteelSeries + F9, which does nothing, shows no label.
 
 ## 0.1.0 — 2026-10-17
 

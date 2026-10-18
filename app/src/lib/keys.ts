@@ -45,7 +45,7 @@ export function keyLabel(usage: number, layout: LayoutId = prefs.layout): string
 /** Factory functions of the SteelSeries layer (1 and 2 confirmed by pressing them on a real keyboard). */
 export function functionLabel(code: number): string {
   switch (code) {
-    case 1: return "No effect (F9)";
+    case 1: return ""; // F9: does nothing, so the key shows no label
     case 2: return "Mic mute (F10)";
     case 3: return "Brightness –";
     case 4: return "Brightness +";

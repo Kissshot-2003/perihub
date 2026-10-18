@@ -202,7 +202,7 @@
         </div>
         <div class="col tight">
           <span class="small muted">Function</span>
-          <strong>{selectedBinding?.type === "none" ? "Same as without SteelSeries" : bindingLabel(selectedBinding)}</strong>
+          <strong>{selectedBinding?.type === "none" ? "Same as without SteelSeries" : bindingLabel(selectedBinding) || "No effect"}</strong>
         </div>
         <label class="field grow">
           New function
