@@ -10,6 +10,7 @@ use perihub_core::{Manager, Result};
 
 const USAGE: &str = "usage:
   perihub-cli status
+  perihub-cli focus [seconds]
   perihub-cli keyboard keymap
   perihub-cli keyboard brightness [0-16]
   perihub-cli keyboard light '<json KeyboardLighting>' [seconds]
@@ -52,7 +53,22 @@ fn print_json(value: &impl serde::Serialize) -> Result<()> {
     Ok(())
 }
 
+/// Prints the app in focus every time it changes (does not use the devices).
+fn watch_focus(seconds: u64) -> Result<()> {
+    println!("{:?}", perihub_core::focus::support());
+    if !perihub_core::focus::watch(|app| println!("{}", app.as_deref().unwrap_or("(none)"))) {
+        return Err(invalid("focus detection is not available here"));
+    }
+    std::thread::sleep(Duration::from_secs(seconds));
+    Ok(())
+}
+
 fn run(args: &[&str]) -> Result<()> {
+    match args {
+        ["focus"] => return watch_focus(30),
+        ["focus", seconds] => return watch_focus(seconds.parse().map_err(|_| invalid("seconds"))?),
+        _ => {}
+    }
     let config = AppConfig::load();
     let manager = Manager::start(config.keyboard, Box::new(|_| {}));
     wait_for_devices(&manager);

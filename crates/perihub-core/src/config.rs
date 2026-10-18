@@ -23,12 +23,39 @@ impl Default for KeyboardConfig {
     }
 }
 
+/// A keyboard lighting saved by name, so app profiles can use it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LightingPreset {
+    pub name: String,
+    pub lighting: KeyboardLighting,
+}
+
+/// What to change while an app is in focus.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AppRule {
+    /// Window class on Linux, executable name on Windows (compared ignoring case).
+    pub app: String,
+    /// Name of a lighting preset, or `None` to keep the keyboard as it is.
+    pub lighting: Option<String>,
+    /// Onboard profile to activate on the mouse, or `None` to keep it as it is.
+    pub mouse_profile: Option<u8>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AppProfiles {
+    pub enabled: bool,
+    pub rules: Vec<AppRule>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
     pub keyboard: KeyboardConfig,
     /// Start hidden in the system tray.
     pub start_hidden: bool,
+    pub lighting_presets: Vec<LightingPreset>,
+    pub app_profiles: AppProfiles,
 }
 
 pub fn config_dir() -> PathBuf {

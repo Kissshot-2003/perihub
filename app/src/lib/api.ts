@@ -19,6 +19,38 @@ export interface KeyboardConfig {
   brightness: number;
 }
 
+/** A keyboard lighting saved by name, for app profiles. */
+export interface LightingPreset {
+  name: string;
+  lighting: KeyboardLighting;
+}
+
+export interface AppRule {
+  /** Window class on Linux, executable name on Windows. */
+  app: string;
+  /** Saved lighting to show, or null to keep the keyboard as it is. */
+  lighting: string | null;
+  /** Mouse onboard profile to activate, or null to keep it as it is. */
+  mouse_profile: number | null;
+}
+
+export interface AppProfiles {
+  enabled: boolean;
+  rules: AppRule[];
+}
+
+export type FocusSupport = { kind: "supported"; desktop: string } | { kind: "unsupported"; reason: string };
+
+export interface ProfilesInfo {
+  support: FocusSupport;
+  focused: string | null;
+  /** Apps focused recently, most recent first. */
+  recent: string[];
+  profiles: AppProfiles;
+  /** Names of the saved lightings. */
+  presets: string[];
+}
+
 export type KeyBinding =
   | { type: "key"; usage: number }
   | { type: "function"; code: number; param: number }
@@ -153,6 +185,10 @@ export const api = {
   applyKeymap: (changes: KeyChange[]) => invoke<Keymap>("kb_apply_keymap", { changes }),
   resetKeymap: () => invoke<Keymap>("kb_reset_keymap"),
   keyCatalog: () => invoke<KeyCatalog>("kb_key_catalog"),
+  presets: () => invoke<LightingPreset[]>("kb_get_presets"),
+  savePreset: (name: string, lighting: KeyboardLighting) =>
+    invoke<LightingPreset[]>("kb_save_preset", { name, lighting }),
+  deletePreset: (name: string) => invoke<LightingPreset[]>("kb_delete_preset", { name }),
 
   mouseState: () => invoke<MouseState>("mouse_get_state"),
   saveProfile: (number: number, settings: ProfileSettings) =>
@@ -164,6 +200,11 @@ export const api = {
   previewDpi: (dpi: number) => invoke<void>("mouse_preview_dpi", { dpi }),
   previewLed: (zone: number, effect: LedEffect) => invoke<void>("mouse_preview_led", { zone, effect }),
   revertPreview: () => invoke<void>("mouse_revert_preview"),
+
+  profiles: () => invoke<ProfilesInfo>("profiles_get"),
+  setProfiles: (profiles: AppProfiles) => invoke<void>("profiles_set", { profiles }),
+  onFocus: (handler: (app: string | null) => void): Promise<UnlistenFn> =>
+    listen<string | null>("focus-changed", (event) => handler(event.payload)),
 
   appSettings: () => invoke<AppSettings>("app_get_settings"),
   setAppSettings: (settings: AppSettings) => invoke<AppSettings>("app_set_settings", { settings }),

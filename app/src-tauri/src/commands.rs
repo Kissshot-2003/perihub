@@ -2,8 +2,9 @@
 //! so they run off the main thread to avoid freezing the window.
 
 use perihub_core::apex::{KeyBinding, keys};
-use perihub_core::config::KeyboardConfig;
+use perihub_core::config::{AppProfiles, KeyboardConfig, LightingPreset};
 use perihub_core::effects::KeyboardLighting;
+use perihub_core::focus::{self, FocusSupport};
 use perihub_core::hidpp::profile::{LedEffect, ProfileSettings};
 use perihub_core::keyboard::Keymap;
 use perihub_core::mouse::MouseState;
@@ -52,7 +53,9 @@ pub async fn kb_set_lighting(state: State<'_, AppState>, lighting: KeyboardLight
     update_keyboard_config(&state, |c| c.lighting = lighting.clone())?;
     let manager = state.manager.clone();
     blocking(move || ignore_disconnected(manager.keyboard().and_then(|k| k.call(move |k| k.set_lighting(lighting)))))
-        .await
+        .await?;
+    state.profiles.lighting_reset();
+    Ok(())
 }
 
 #[tauri::command]
@@ -110,6 +113,54 @@ pub struct KeyCatalog {
 #[tauri::command]
 pub fn kb_key_catalog() -> KeyCatalog {
     KeyCatalog { targets: keys::TARGET_KEYS, sources: (0..=255u8).filter(|&u| keys::is_remappable_source(u)).collect() }
+}
+
+#[tauri::command]
+pub fn kb_get_presets(state: State<'_, AppState>) -> Vec<LightingPreset> {
+    state.config.lock().unwrap().lighting_presets.clone()
+}
+
+/// Saves the presets and the rules, and passes them to the app profiles.
+fn save_profiles(state: &AppState, change: impl FnOnce(&mut Vec<LightingPreset>, &mut AppProfiles)) -> CmdResult<()> {
+    let mut config = state.config.lock().unwrap();
+    let config = &mut *config;
+    change(&mut config.lighting_presets, &mut config.app_profiles);
+    config.save().map_err(|e| e.to_string())?;
+    // Applying may talk to the devices: not on the thread that runs the window.
+    let (engine, profiles, presets) =
+        (state.profiles.clone(), config.app_profiles.clone(), config.lighting_presets.clone());
+    std::thread::spawn(move || engine.set_profiles(profiles, presets));
+    Ok(())
+}
+
+/// Saves a lighting under a name, replacing a preset with the same name.
+#[tauri::command]
+pub fn kb_save_preset(
+    state: State<'_, AppState>,
+    name: String,
+    lighting: KeyboardLighting,
+) -> CmdResult<Vec<LightingPreset>> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("the preset needs a name".into());
+    }
+    save_profiles(&state, |presets, _| match presets.iter_mut().find(|p| p.name == name) {
+        Some(preset) => preset.lighting = lighting,
+        None => presets.push(LightingPreset { name, lighting }),
+    })?;
+    Ok(kb_get_presets(state))
+}
+
+/// Deletes a preset; rules that used it keep the keyboard as it is.
+#[tauri::command]
+pub fn kb_delete_preset(state: State<'_, AppState>, name: String) -> CmdResult<Vec<LightingPreset>> {
+    save_profiles(&state, |presets, profiles| {
+        presets.retain(|p| p.name != name);
+        for rule in profiles.rules.iter_mut().filter(|r| r.lighting.as_ref() == Some(&name)) {
+            rule.lighting = None;
+        }
+    })?;
+    Ok(kb_get_presets(state))
 }
 
 // ---- Mouse ----
@@ -170,6 +221,39 @@ pub async fn mouse_preview_led(state: State<'_, AppState>, zone: u8, effect: Led
 pub async fn mouse_revert_preview(state: State<'_, AppState>) -> CmdResult<()> {
     let manager = state.manager.clone();
     blocking(move || ignore_disconnected(manager.mouse().and_then(|m| m.call(|m| m.revert_preview())))).await
+}
+
+// ---- App profiles ----
+
+#[derive(Serialize)]
+pub struct ProfilesInfo {
+    support: FocusSupport,
+    focused: Option<String>,
+    recent: Vec<String>,
+    profiles: AppProfiles,
+    presets: Vec<String>,
+}
+
+/// App profiles and the focused app. Opening the page starts following the focused app,
+/// so it can be shown while setting up the rules.
+#[tauri::command]
+pub fn profiles_get(app: AppHandle, state: State<'_, AppState>) -> ProfilesInfo {
+    crate::watch_focus(&app, &state.profiles);
+    let config = state.config.lock().unwrap();
+    ProfilesInfo {
+        support: focus::support(),
+        focused: state.profiles.focused(),
+        recent: state.profiles.recent_apps(),
+        profiles: config.app_profiles.clone(),
+        presets: config.lighting_presets.iter().map(|p| p.name.clone()).collect(),
+    }
+}
+
+#[tauri::command]
+pub fn profiles_set(app: AppHandle, state: State<'_, AppState>, profiles: AppProfiles) -> CmdResult<()> {
+    save_profiles(&state, |_, current| *current = profiles)?;
+    crate::watch_focus(&app, &state.profiles);
+    Ok(())
 }
 
 // ---- App ----

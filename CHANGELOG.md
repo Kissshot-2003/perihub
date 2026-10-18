@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- App profiles: while a game or an app is in focus, the keyboard shows a saved lighting and the mouse switches to one of its onboard profiles; both go back when it loses focus. Works on Windows and on Hyprland.
+- Saved lightings on the keyboard lighting page, used by app profiles.
+- `perihub-cli focus` prints the app in focus, to find the name to use in a rule.
 - German, French, Spanish, Portuguese, Swedish/Finnish, Norwegian and Danish layouts in the key remapping view, chosen automatically from the system language.
 
 ### Changed

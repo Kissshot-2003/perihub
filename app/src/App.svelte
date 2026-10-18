@@ -2,11 +2,12 @@
   import { onMount } from "svelte";
   import { api, type DeviceStatus } from "./lib/api";
   import Keyboard from "./pages/Keyboard.svelte";
+  import AppProfiles from "./pages/AppProfiles.svelte";
   import Mouse from "./pages/Mouse.svelte";
   import Settings from "./pages/Settings.svelte";
 
-  type Page = "keyboard" | "mouse" | "settings";
-  const PAGES: Page[] = ["keyboard", "mouse", "settings"];
+  type Page = "keyboard" | "mouse" | "profiles" | "settings";
+  const PAGES: Page[] = ["keyboard", "mouse", "profiles", "settings"];
 
   // Navigation through the URL hash (#page or #page:tab), so a page can be opened directly.
   function fromHash(): [Page, string | undefined] {
@@ -61,6 +62,7 @@
     </button>
 
     <div class="grow"></div>
+    <button class:active={page === "profiles"} onclick={() => go("profiles")}>App profiles</button>
     <button class:active={page === "settings"} onclick={() => go("settings")}>Settings</button>
   </nav>
 
@@ -69,6 +71,8 @@
       {#key tab}<Keyboard info={status.keyboard} error={status.keyboard_error} initialTab={tab} />{/key}
     {:else if page === "mouse"}
       {#key tab}<Mouse info={status.mouse} error={status.mouse_error} initialTab={tab} />{/key}
+    {:else if page === "profiles"}
+      <AppProfiles {status} />
     {:else}
       <Settings {status} />
     {/if}

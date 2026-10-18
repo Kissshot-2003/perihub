@@ -1,10 +1,12 @@
 //! PeriHub: configure the SteelSeries Apex 3 TKL and Logitech G502 HERO without GG or G HUB.
 
 pub mod apex;
+pub mod app_profiles;
 pub mod color;
 pub mod config;
 pub mod effects;
 pub mod error;
+pub mod focus;
 pub mod hidpp;
 pub mod keyboard;
 pub mod manager;

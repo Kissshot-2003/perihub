@@ -55,6 +55,12 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 | Buttons | 11 buttons plus the G-Shift layer: mouse clicks, keys with Ctrl/Shift/Alt/Win/Alt Gr, media keys, DPI up/down/cycle/sniper, profile switching | Mouse memory |
 | Lighting | Logo and DPI indicator: off, fixed color with brightness, breathing, color cycle (breathing and color cycle stay in sync on both zones), with live preview | Mouse memory |
 
+### App profiles
+
+While a game or an app is in focus, PeriHub can show one of your saved keyboard lightings and switch the mouse to one of its onboard profiles. When you switch to an app without a rule, both go back to how they were. It works on Windows and, on Linux, on Hyprland: other Linux desktops do not tell apps which window is in focus.
+
+PeriHub only reads the app's identifier (the executable name on Windows, the window class on Linux), never window titles or contents, and keeps nothing but your rules.
+
 ### Other Logitech G mice (experimental)
 
 27 more Logitech mice are recognized when connected with a USB cable (see [Supported hardware](#supported-hardware)). They have not been tested with PeriHub yet, so it only reads them: you can see their profiles, DPI levels, buttons and lighting, but nothing can be changed until someone confirms that the model works.
@@ -224,8 +230,8 @@ The UI is in English. More languages are on the roadmap.
 
 - **Windows**: first test on a real Windows PC passed (keyboard lighting, key remapping, mouse profiles). Reports from other setups are welcome.
 - **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
+- **App profiles** detect the app in focus on Windows and on Hyprland only. They switch lighting and mouse profiles, not key mappings, because changing those writes the keyboard's memory.
 - **Not yet available**:
-  - automatic profile switching based on the active game or app;
   - software macros;
   - reactive (per-keypress) lighting;
   - GameSense compatibility.

@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { cubicOut } from "svelte/easing";
   import { Tween } from "svelte/motion";
-  import { api, debounce, errorText, type KeyboardLighting, type Rgb } from "../lib/api";
+  import { api, debounce, errorText, type KeyboardLighting, type LightingPreset, type Rgb } from "../lib/api";
   import { ZONES } from "../lib/effects";
   import ZoneStrip from "../components/ZoneStrip.svelte";
 
@@ -39,6 +39,9 @@
   let error = $state<string | null>(null);
   /** When the slider was last moved, so polling does not fight with the user. */
   let brightnessTouched = 0;
+  /** Saved lightings, for app profiles. */
+  let saved = $state<LightingPreset[]>([]);
+  let presetName = $state("");
 
   const lighting = $derived.by((): KeyboardLighting => {
     switch (kind) {
@@ -64,9 +67,8 @@
     if (loaded) pushLighting(l);
   });
 
-  onMount(async () => {
-    const config = await api.keyboardConfig();
-    const l = config.lighting;
+  /** Shows a lighting in the editor (which then applies it). */
+  function show(l: KeyboardLighting) {
     kind = l.type;
     if (l.type === "static" || l.type === "breathing") zones = [...l.colors];
     if (l.type === "gradient") {
@@ -75,6 +77,30 @@
     }
     if ("period_ms" in l) period = l.period_ms;
     if (l.type === "wave") reverse = l.reverse;
+  }
+
+  async function savePreset() {
+    try {
+      saved = await api.savePreset(presetName, lighting);
+      presetName = "";
+      error = null;
+    } catch (e) {
+      error = errorText(e);
+    }
+  }
+
+  async function deletePreset(name: string) {
+    try {
+      saved = await api.deletePreset(name);
+    } catch (e) {
+      error = errorText(e);
+    }
+  }
+
+  onMount(async () => {
+    const config = await api.keyboardConfig();
+    show(config.lighting);
+    saved = await api.presets();
     brightness = config.brightness;
     // Brightness can also be changed from the keyboard (SteelSeries + F11/F12): read the actual value.
     if (connected) {
@@ -193,6 +219,25 @@
         oninput={onBrightness} onchange={onBrightnessEnd} />
     </label>
   </div>
+
+  <div class="card col">
+    <h3>Saved lightings</h3>
+    <p class="muted small">Save the current lighting to use it in app profiles. Click a saved lighting to show it again.</p>
+    {#if saved.length}
+      <div class="row wrap">
+        {#each saved as preset (preset.name)}
+          <span class="chip">
+            <button class="ghost tight" onclick={() => show(preset.lighting)}>{preset.name}</button>
+            <button class="ghost tight" aria-label="Delete {preset.name}" title="Delete" onclick={() => deletePreset(preset.name)}>×</button>
+          </span>
+        {/each}
+      </div>
+    {/if}
+    <form class="row" onsubmit={(e) => { e.preventDefault(); savePreset(); }}>
+      <input placeholder="Name, e.g. Gaming" maxlength="40" bind:value={presetName} />
+      <button type="submit" disabled={!presetName.trim()}>Save current lighting</button>
+    </form>
+  </div>
 </div>
 
 <style>
@@ -255,5 +300,9 @@
 
   .field input[type="range"] {
     max-width: 420px;
+  }
+
+  .tight {
+    padding: 2px 4px;
   }
 </style>

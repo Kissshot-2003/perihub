@@ -258,6 +258,10 @@ impl MouseTask {
         self.state()
     }
 
+    pub fn active_profile(&mut self) -> Result<u8> {
+        self.dev.active_profile()
+    }
+
     pub fn set_active_profile(&mut self, number: u8) -> Result<()> {
         self.check_number(number)?;
         self.dev.set_active_profile(number)

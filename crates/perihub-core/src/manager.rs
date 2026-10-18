@@ -203,6 +203,11 @@ impl Manager {
         self.slots.lock().unwrap().mouse.as_ref().map(|(w, _)| w.clone()).ok_or(Error::NotConnected)
     }
 
+    /// Settings applied whenever the keyboard is connected.
+    pub fn keyboard_config(&self) -> KeyboardConfig {
+        self.keyboard_config.lock().unwrap().clone()
+    }
+
     /// Updates the settings to reapply whenever the keyboard is reconnected.
     pub fn set_keyboard_config(&self, config: KeyboardConfig) {
         *self.keyboard_config.lock().unwrap() = config;

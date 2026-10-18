@@ -3,9 +3,10 @@
 
 mod commands;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use perihub_core::Manager;
+use perihub_core::app_profiles::AppProfileEngine;
 use perihub_core::config::AppConfig;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -14,6 +15,15 @@ use tauri::{AppHandle, Emitter, Manager as _, WindowEvent};
 pub struct AppState {
     pub manager: Manager,
     pub config: Mutex<AppConfig>,
+    pub profiles: Arc<AppProfileEngine>,
+}
+
+/// Starts following the focused app; the interface gets an event at every change.
+pub fn watch_focus(app: &AppHandle, profiles: &Arc<AppProfileEngine>) {
+    let handle = app.clone();
+    profiles.watch_focus(move |focused| {
+        let _ = handle.emit("focus-changed", focused);
+    });
 }
 
 /// Argument passed by autostart: start hidden in the system tray.
@@ -41,14 +51,27 @@ fn main() {
         .setup(move |app| {
             let config = AppConfig::load();
             let handle = app.handle().clone();
+            // The device listener starts before the app profiles exist: they are set right after.
+            let profiles_slot = Arc::new(OnceLock::<Arc<AppProfileEngine>>::new());
+            let slot = profiles_slot.clone();
             let manager = Manager::start(
                 config.keyboard.clone(),
                 Box::new(move |status| {
+                    if let Some(profiles) = slot.get() {
+                        profiles.devices_changed(status);
+                    }
                     let _ = handle.emit("devices-changed", status);
                 }),
             );
+            let profiles =
+                AppProfileEngine::new(manager.clone(), config.app_profiles.clone(), config.lighting_presets.clone());
+            let _ = profiles_slot.set(profiles.clone());
+            profiles.devices_changed(&manager.status());
+            if config.app_profiles.enabled {
+                watch_focus(app.handle(), &profiles);
+            }
             let start_hidden = hidden_requested || config.start_hidden;
-            app.manage(AppState { manager, config: Mutex::new(config) });
+            app.manage(AppState { manager, config: Mutex::new(config), profiles });
 
             let open = MenuItem::with_id(app, "open", "Open PeriHub", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -105,6 +128,9 @@ fn main() {
             commands::kb_apply_keymap,
             commands::kb_reset_keymap,
             commands::kb_key_catalog,
+            commands::kb_get_presets,
+            commands::kb_save_preset,
+            commands::kb_delete_preset,
             commands::mouse_get_state,
             commands::mouse_save_profile,
             commands::mouse_restore_factory,
@@ -113,6 +139,8 @@ fn main() {
             commands::mouse_preview_dpi,
             commands::mouse_preview_led,
             commands::mouse_revert_preview,
+            commands::profiles_get,
+            commands::profiles_set,
             commands::app_get_settings,
             commands::app_set_settings,
             commands::app_quit,
