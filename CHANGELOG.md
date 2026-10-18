@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- German, French, Spanish, Portuguese, Swedish/Finnish, Norwegian and Danish layouts in the key remapping view, chosen automatically from the system language.
+
 ### Changed
 - The experimental mouse notice points to the new mouse test report form on GitHub.
 

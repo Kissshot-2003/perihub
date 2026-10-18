@@ -43,7 +43,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 |---|---|---|
 | 8-zone lighting | Static (one color per zone), gradient, breathing, color cycle, wave, built-in rainbow, off | PC (PeriHub reapplies it whenever the keyboard is connected) |
 | Brightness | 0–100% in 17 steps, kept in sync with SteelSeries + F11/F12 | PC |
-| Key remapping | Any key, on both the normal layer and the "SteelSeries key held" layer, with ANSI and ISO layouts | **Keyboard memory**: works without PeriHub |
+| Key remapping | Any key, on both the normal layer and the "SteelSeries key held" layer, with the US, UK, Italian, German, French, Spanish, Portuguese, Swedish/Finnish, Norwegian and Danish layouts | **Keyboard memory**: works without PeriHub |
 
 ### Logitech G502 HERO
 
@@ -127,7 +127,7 @@ PeriHub is meant to support much more than these two devices. The plan is to add
 - **Other SteelSeries keyboards**, such as the rest of the Apex range.
 - **SteelSeries mice.**
 - **Headsets and other peripherals**, where the hardware exposes useful settings.
-- **More layouts and languages** for the key remapping view and the UI.
+- **More languages** for the UI, and more layouts for the key remapping view.
 
 There is no fixed timeline: devices are added once their protocol can be verified on real hardware. If you own a device you would like to see supported, open a [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml): read-only dumps and testing help are the fastest way to get a device added.
 
