@@ -76,11 +76,7 @@ impl KeyboardTask {
         if self.lighting.fade().is_none() {
             self.keys = None;
         } else if self.keys.is_none() {
-            let watcher = match &self.key_interfaces.boot {
-                Some(boot) => KeyWatcher::start(boot, self.key_interfaces.bitmap.as_ref()),
-                None => Err(Error::NotConnected),
-            };
-            match watcher {
+            match KeyWatcher::start(self.key_interfaces.boot.as_ref(), self.key_interfaces.bitmap.as_ref()) {
                 Ok(watcher) => self.keys = Some(watcher),
                 Err(error) => {
                     self.keys_failed = Some(Instant::now());

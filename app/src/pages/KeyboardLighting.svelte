@@ -265,9 +265,6 @@
         Fade: {(fade / 1000).toFixed(1)} s
         <input type="range" min="100" max="3000" step="50" bind:value={fade} />
       </label>
-      {#if onWindows}
-        <div class="notice info">Reactive lighting works on Linux for now: on Windows the keyboard shows the background color.</div>
-      {/if}
       <p class="muted small">
         The zone of each key you press lights up. PeriHub only uses key presses to light the keyboard while this
         effect is on: they are never stored or sent anywhere.
