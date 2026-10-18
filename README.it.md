@@ -34,6 +34,7 @@ Per ora PeriHub supporta la tastiera **SteelSeries Apex 3 TKL** e il mouse **Log
 - [Compilare dai sorgenti](#compilare-dai-sorgenti)
 - [Come è fatto](#come-è-fatto)
 - [Contribuire](#contribuire)
+- [Sostieni il progetto](#sostieni-il-progetto)
 - [Riconoscimenti e licenza](#riconoscimenti-e-licenza)
 
 ## Funzionalità
@@ -252,6 +253,12 @@ Segnalazioni di bug, richieste di dispositivi e pull request sono benvenute.
 - **Bug**: indica il sistema operativo, il dispositivo e cosa ha mostrato l'app.
 - **Nuovi dispositivi**: apri una [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml) con il modello e l'ID USB.
 - **Codice**: prima di aprire una pull request lancia `cargo test`, `cargo clippy` e `npm run check`.
+
+## Sostieni il progetto
+
+PeriHub è gratuito e open source. Se ti ha evitato di installare G HUB o SteelSeries GG e vuoi dire grazie, puoi [offrirmi un caffè](https://buymeacoffee.com/hexdump1).
+
+Le donazioni sono del tutto facoltative e non sbloccano nulla. Sostengono lo sviluppo di PeriHub, compreso l'acquisto di nuovi dispositivi da supportare. Puoi aiutare altrettanto senza spendere: prova PeriHub sul tuo hardware, segnala i bug o apri una device request con i dump in sola lettura.
 
 ## Riconoscimenti e licenza
 

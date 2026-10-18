@@ -34,6 +34,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 - [Building from source](#building-from-source)
 - [Architecture](#architecture)
 - [Contributing](#contributing)
+- [Support the project](#support-the-project)
 - [Credits and license](#credits-and-license)
 
 ## Features
@@ -252,6 +253,12 @@ Bug reports, device requests and pull requests are welcome.
 - **Bugs**: include your OS, the device, and what the app showed.
 - **New devices**: open a [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml) with the model and USB ID.
 - **Code**: run `cargo test`, `cargo clippy` and `npm run check` before opening a pull request.
+
+## Support the project
+
+PeriHub is free and open source. If it spared you from installing G HUB or SteelSeries GG and you'd like to say thanks, you can [buy me a coffee](https://buymeacoffee.com/hexdump1).
+
+Donations are entirely optional and don't unlock anything. They support the development of PeriHub, including buying new devices to add. You can help just as much without money: test PeriHub on your hardware, report bugs, or open a device request with read-only dumps.
 
 ## Credits and license
 
