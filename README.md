@@ -15,8 +15,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/hex-dump/perihub" alt="MIT license"></a>
 </p>
 
-<p align="center"><b>English</b> · <a href="README.it.md">Italiano</a></p>
-
 ![Keyboard lighting](docs/screenshots/keyboard-lighting.png)
 
 PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Logitech G502 HERO** mouse. The goal is to grow into a single, lightweight, vendor-neutral app for many more devices: see [Hardware roadmap](#hardware-roadmap).
