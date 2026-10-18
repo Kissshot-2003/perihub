@@ -1,0 +1,27 @@
+# Maintainer: lamasniper7654 <119895168+hex-dump@users.noreply.github.com>
+
+pkgname=perihub-bin
+_pkgname=perihub
+pkgver=0.2.0
+pkgrel=1
+pkgdesc='Configure the SteelSeries Apex 3 TKL and Logitech G mice without SteelSeries GG or Logitech G HUB'
+arch=('x86_64')
+url='https://github.com/hex-dump/perihub'
+license=('MIT')
+depends=('cairo' 'dbus' 'gcc-libs' 'gdk-pixbuf2' 'glib2' 'glibc' 'gtk3' 'hicolor-icon-theme'
+         'libayatana-appindicator' 'libsoup3' 'systemd-libs' 'webkit2gtk-4.1')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!strip' '!debug')
+source=("https://github.com/hex-dump/perihub/releases/download/v$pkgver/PeriHub_${pkgver}_amd64.deb"
+        "LICENSE-$pkgver::https://raw.githubusercontent.com/hex-dump/perihub/v$pkgver/LICENSE")
+sha256sums=('968484a1c1efcec13954db5253ac31c66ad46532eaea6af2485635710576ba5b'
+            '440e353d7bb443f50c947eacbc5a437d4707c6f0595b7fa509d530bab1aef67f')
+
+package() {
+  # The .deb contains the binary, the desktop file, the icons and the udev rule.
+  bsdtar -xf data.tar.* -C "$pkgdir"
+  # 0.2.0 ships an empty Categories= line, so the app would only show up under "Other".
+  sed -i 's/^Categories=$/Categories=Utility;Settings;HardwareSettings;/' "$pkgdir/usr/share/applications/PeriHub.desktop"
+  install -Dm644 "LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
