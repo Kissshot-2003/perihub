@@ -57,6 +57,8 @@ struct Slots {
     mouse_path: Option<CString>,
     /// Unverified mouse that failed to open: not retried until it is plugged in again.
     mouse_failed: Option<CString>,
+    /// Interfaces of the connected keyboard that report key presses.
+    key_interfaces: KeyInterfaces,
 }
 
 pub type Listener = Box<dyn Fn(&DeviceStatus) + Send + Sync>;
@@ -125,6 +127,7 @@ impl Manager {
             let mut slots = self.slots.lock().unwrap();
             if slots.keyboard.as_ref().is_some_and(|(w, _)| !w.is_alive() || keyboard.is_none()) {
                 slots.keyboard = None;
+                slots.key_interfaces = KeyInterfaces::default();
                 changed = true;
             }
             slots.keyboard.is_some()
@@ -134,12 +137,13 @@ impl Manager {
             let result = info
                 .open_device(api)
                 .map_err(Error::from)
-                .and_then(|dev| KeyboardTask::open(Apex3Tkl::new(dev), &config, key_interfaces));
+                .and_then(|dev| KeyboardTask::open(Apex3Tkl::new(dev), &config, key_interfaces.clone()));
             let mut slots = self.slots.lock().unwrap();
             let error = match result {
                 Ok(task) => {
                     let info = task.info.clone();
                     slots.keyboard = Some((Worker::spawn("perihub-keyboard", task), info));
+                    slots.key_interfaces = key_interfaces;
                     None
                 }
                 Err(error) => Some(open_error_message(error)),
@@ -209,6 +213,13 @@ impl Manager {
 
     pub fn mouse(&self) -> Result<Worker<MouseTask>> {
         self.slots.lock().unwrap().mouse.as_ref().map(|(w, _)| w.clone()).ok_or(Error::NotConnected)
+    }
+
+    /// Whether PeriHub may read the keyboard's key presses (for reactive lighting), or `None` if
+    /// the keyboard is not connected. Only opens the interface for a moment; nothing is read.
+    pub fn key_presses_readable(&self) -> Option<bool> {
+        let path = self.slots.lock().unwrap().key_interfaces.boot.clone()?;
+        Some(HidApi::new().and_then(|api| api.open_path(&path)).is_ok())
     }
 
     /// Settings applied whenever the keyboard is connected.

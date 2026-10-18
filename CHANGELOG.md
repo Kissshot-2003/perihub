@@ -5,11 +5,12 @@
 ### Added
 - App profiles: while a game or an app is in focus, the keyboard shows a saved lighting and the mouse switches to one of its onboard profiles; both go back when it loses focus. Works on Windows and on Hyprland.
 - Saved lightings on the keyboard lighting page, used by app profiles.
-- Reactive keyboard lighting: the zone of each pressed key lights up and fades back (Linux only for now). Key presses are read only while the effect is on and are never stored.
+- Reactive keyboard lighting: the zone of each pressed key lights up and fades back (Linux only for now). Key presses are read only while the effect is on and are never stored. It needs an optional udev rule, which PeriHub can install and remove after an explicit warning: with it, every program running as the user can read what is typed on the Apex.
 - `perihub-cli focus` prints the app in focus, to find the name to use in a rule.
 - German, French, Spanish, Portuguese, Swedish/Finnish, Norwegian and Danish layouts in the key remapping view, chosen automatically from the system language.
 
 ### Changed
+- **Security:** the Linux udev rule now opens only the Apex 3 TKL's configuration interface. Before, it also opened the interfaces that report key presses, so programs running as the user could read what was typed on it. Install the new rule to apply the change.
 - The experimental mouse notice points to the new mouse test report form on GitHub.
 
 ## 0.2.0 — 2026-10-18

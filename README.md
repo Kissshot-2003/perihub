@@ -178,7 +178,16 @@ sudo curl -o /etc/udev/rules.d/70-perihub.rules \
 sudo udevadm control --reload && sudo udevadm trigger
 ```
 
-The rule grants access only to the HID interfaces of the supported devices, and only to the user with the active session. If you already use OpenRGB with its udev rules, you probably don't need it.
+The rule grants access only to the HID interfaces of the supported devices, and only to the user with the active session. On the Apex 3 TKL it opens only the configuration interface: the interfaces that report what you type stay closed. If you already use OpenRGB with its udev rules, you probably don't need it.
+
+#### Optional: reactive lighting
+
+Reactive lighting needs a second rule, [`71-perihub-keys.rules`](packaging/linux/71-perihub-keys.rules), because it reads key presses. PeriHub offers to install it from **Lighting → Reactive**, asking for your password, and can remove it from the same place.
+
+> [!WARNING]
+> Linux cannot give this permission to PeriHub alone. With the rule installed, **every program running under your user account can read everything you type on the Apex 3 TKL**, including passwords and private messages, in any app and even while PeriHub is closed. A malicious or compromised program could use it as a keylogger. It turns off, for this keyboard, the protection Wayland normally gives. Install it only if you want reactive lighting and trust all the software you run.
+
+PeriHub itself reads key presses only while the reactive effect is on and keeps only which lighting zone to light: it never stores, logs or sends them.
 
 ## Usage
 
@@ -211,7 +220,7 @@ PeriHub does not modify firmware. It uses the same configuration commands as the
   - Keyboard: the key mapping is written to RAM first and only saved to memory if the read-back matches; otherwise it is rolled back.
 - **Untested mice are read-only.** For a mouse that has not been verified, the core only allows HID++ functions that read state, and it does not even take the mouse out of software mode.
 - **Factory profiles are read-only.** The mouse's ROM profiles are never written and are used for restoring.
-- **Key presses stay on your PC.** Only the reactive lighting effect reads key presses, only while it is on, and only from the Apex 3 TKL. PeriHub keeps nothing but the time of the last press in each lighting zone: which keys you press is never stored, logged or sent anywhere. Note that on Linux the udev rule gives programs running as your user access to all of the Apex's HID interfaces, including the ones that report key presses.
+- **Key presses stay on your PC.** Only the reactive lighting effect reads key presses, only while it is on, and only from the Apex 3 TKL. PeriHub keeps nothing but the time of the last press in each lighting zone: which keys you press is never stored, logged or sent anywhere. On Linux, the interfaces that report key presses are closed by default and opened only if you install the optional rule for reactive lighting (see [the warning](#optional-reactive-lighting)).
 - **Backups.** Before every write to a device's memory, PeriHub saves the previous state in
   - Linux: `~/.config/perihub/backups/`
   - Windows: `%APPDATA%\perihub\backups\`

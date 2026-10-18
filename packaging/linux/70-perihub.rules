@@ -2,8 +2,12 @@
 # Manual install:
 #   sudo cp 70-perihub.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
 
-# SteelSeries Apex 3 TKL
-KERNEL=="hidraw*", ATTRS{idVendor}=="1038", ATTRS{idProduct}=="1622", TAG+="uaccess"
+# Interface numbers (most systems already import them in 60-persistent-hidraw.rules).
+KERNEL=="hidraw*", SUBSYSTEMS=="usb", ENV{ID_USB_INTERFACE_NUM}=="", IMPORT{builtin}="usb_id"
+
+# SteelSeries Apex 3 TKL: only the configuration interface (lighting, brightness, key mapping).
+# The interfaces that report key presses stay closed: see 71-perihub-keys.rules.
+KERNEL=="hidraw*", ATTRS{idVendor}=="1038", ATTRS{idProduct}=="1622", ENV{ID_USB_INTERFACE_NUM}=="01", TAG+="uaccess"
 # Logitech mice (the G502 HERO is tested, the others are read-only until they are)
 # Logitech G502 HERO
 KERNEL=="hidraw*", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c08b", TAG+="uaccess"

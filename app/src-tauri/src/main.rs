@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod key_access;
 
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -131,6 +132,9 @@ fn main() {
             commands::kb_get_presets,
             commands::kb_save_preset,
             commands::kb_delete_preset,
+            key_access::kb_key_access,
+            key_access::kb_grant_key_access,
+            key_access::kb_revoke_key_access,
             commands::mouse_get_state,
             commands::mouse_save_profile,
             commands::mouse_restore_factory,

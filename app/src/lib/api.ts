@@ -26,6 +26,16 @@ export interface LightingPreset {
   lighting: KeyboardLighting;
 }
 
+/** Permission to read the keyboard's key presses, for reactive lighting (Linux). */
+export interface KeyAccess {
+  /** PeriHub can read key presses now (null: keyboard not connected). */
+  readable: boolean | null;
+  rule_installed: boolean;
+  supported: boolean;
+  manual_install: string;
+  manual_remove: string;
+}
+
 export interface AppRule {
   /** Window class on Linux, executable name on Windows. */
   app: string;
@@ -186,6 +196,9 @@ export const api = {
   applyKeymap: (changes: KeyChange[]) => invoke<Keymap>("kb_apply_keymap", { changes }),
   resetKeymap: () => invoke<Keymap>("kb_reset_keymap"),
   keyCatalog: () => invoke<KeyCatalog>("kb_key_catalog"),
+  keyAccess: () => invoke<KeyAccess>("kb_key_access"),
+  grantKeyAccess: () => invoke<void>("kb_grant_key_access"),
+  revokeKeyAccess: () => invoke<void>("kb_revoke_key_access"),
   presets: () => invoke<LightingPreset[]>("kb_get_presets"),
   savePreset: (name: string, lighting: KeyboardLighting) =>
     invoke<LightingPreset[]>("kb_save_preset", { name, lighting }),
