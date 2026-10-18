@@ -2,9 +2,9 @@
 
 use std::time::{Duration, Instant};
 
+use perihub_core::apex::KeyBinding;
 use perihub_core::config::AppConfig;
 use perihub_core::effects::KeyboardLighting;
-use perihub_core::apex::KeyBinding;
 use perihub_core::hidpp::profile::{LedEffect, ProfileSettings};
 use perihub_core::{Manager, Result};
 
@@ -39,7 +39,8 @@ fn wait_for_devices(manager: &Manager) {
     while start.elapsed() < Duration::from_secs(5) {
         let status = manager.status();
         let done = |present: bool, error: &Option<String>| present || error.is_some();
-        if done(status.keyboard.is_some(), &status.keyboard_error) && done(status.mouse.is_some(), &status.mouse_error) {
+        if done(status.keyboard.is_some(), &status.keyboard_error) && done(status.mouse.is_some(), &status.mouse_error)
+        {
             return;
         }
         std::thread::sleep(Duration::from_millis(100));

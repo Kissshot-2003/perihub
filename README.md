@@ -213,6 +213,7 @@ Don't build the app with plain `cargo build`: that binary loads the UI from the 
 Tests and checks:
 
 ```sh
+cargo fmt --all                 # formatting (CI checks it)
 cargo test --workspace          # includes tests on sectors read from a real G502 HERO
 cargo clippy --workspace --all-targets
 cd app && npm run check         # frontend type check
@@ -255,7 +256,7 @@ Bug reports, device requests and pull requests are welcome.
 - **Questions and ideas**: use [Discussions](https://github.com/hex-dump/perihub/discussions).
 - **Bugs**: include your OS, the device, and what the app showed.
 - **New devices**: open a [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml) with the model and USB ID.
-- **Code**: run `cargo test`, `cargo clippy` and `npm run check` before opening a pull request.
+- **Code**: run `cargo fmt`, `cargo test`, `cargo clippy` and `npm run check` before opening a pull request.
 
 ## Support the project
 

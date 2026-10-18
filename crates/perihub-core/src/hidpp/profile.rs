@@ -93,15 +93,26 @@ impl SpecialFunction {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ButtonAction {
     /// Mouse button, 1 = left, 2 = right, 3 = middle, 4 = back, 5 = forward…
-    Mouse { button: u8 },
+    Mouse {
+        button: u8,
+    },
     /// Keyboard key (HID usage) with the standard HID modifiers (bit 0 = left Ctrl, 1 = left Shift, 2 = left Alt, 3 = left Win…).
-    Key { modifiers: u8, key: u8 },
+    Key {
+        modifiers: u8,
+        key: u8,
+    },
     /// Media key (usage from the HID Consumer page, e.g. 0x00CD = play/pause).
-    Consumer { usage: u16 },
-    Special { function: SpecialFunction },
+    Consumer {
+        usage: u16,
+    },
+    Special {
+        function: SpecialFunction,
+    },
     Disabled,
     /// Macro or unsupported type: kept byte for byte.
-    Raw { bytes: [u8; 4] },
+    Raw {
+        bytes: [u8; 4],
+    },
 }
 
 impl ButtonAction {
@@ -152,11 +163,22 @@ impl ButtonAction {
 #[serde(tag = "mode", rename_all = "snake_case")]
 pub enum LedEffect {
     Off,
-    Fixed { color: Rgb },
-    Breathing { color: Rgb, period_ms: u16, brightness: u8 },
-    Cycle { period_ms: u16, brightness: u8 },
+    Fixed {
+        color: Rgb,
+    },
+    Breathing {
+        color: Rgb,
+        period_ms: u16,
+        brightness: u8,
+    },
+    Cycle {
+        period_ms: u16,
+        brightness: u8,
+    },
     /// Unsupported effect: kept byte for byte.
-    Raw { bytes: [u8; LED_LEN] },
+    Raw {
+        bytes: [u8; LED_LEN],
+    },
 }
 
 impl LedEffect {
@@ -172,10 +194,9 @@ impl LedEffect {
                 period_ms: u16::from_be_bytes([raw[4], raw[5]]),
                 brightness: brightness(raw[7]),
             },
-            0x03 if zero(1..6) && zero(9..LED_LEN) => Self::Cycle {
-                period_ms: u16::from_be_bytes([raw[6], raw[7]]),
-                brightness: brightness(raw[8]),
-            },
+            0x03 if zero(1..6) && zero(9..LED_LEN) => {
+                Self::Cycle { period_ms: u16::from_be_bytes([raw[6], raw[7]]), brightness: brightness(raw[8]) }
+            }
             _ => Self::Raw { bytes: raw },
         }
     }
@@ -230,9 +251,8 @@ impl ProfileSettings {
             .map(|i| u16::from_le_bytes([sector[OFF_DPI + 2 * i], sector[OFF_DPI + 2 * i + 1]]))
             .take_while(|&dpi| dpi != 0 && dpi != 0xFFFF)
             .collect();
-        let button = |base: usize, i: usize| {
-            ButtonAction::decode(sector[base + 4 * i..base + 4 * i + 4].try_into().unwrap())
-        };
+        let button =
+            |base: usize, i: usize| ButtonAction::decode(sector[base + 4 * i..base + 4 * i + 4].try_into().unwrap());
         Ok(Self {
             report_rate_ms: sector[OFF_REPORT_RATE],
             dpi_levels,
@@ -240,9 +260,7 @@ impl ProfileSettings {
             shift_dpi_index: sector[OFF_SHIFT_DPI],
             buttons: (0..button_count).map(|i| button(OFF_BUTTONS, i)).collect(),
             gshift_buttons: (0..button_count).map(|i| button(OFF_GSHIFT_BUTTONS, i)).collect(),
-            leds: (0..LED_SLOTS)
-                .map(|i| LedEffect::decode(&sector[OFF_LEDS + LED_LEN * i..]))
-                .collect(),
+            leds: (0..LED_SLOTS).map(|i| LedEffect::decode(&sector[OFF_LEDS + LED_LEN * i..])).collect(),
         })
     }
 
@@ -277,7 +295,10 @@ impl ProfileSettings {
     pub fn apply(&self, sector: &mut [u8]) -> Result<()> {
         let button_count = self.buttons.len();
         check_layout(sector, button_count)?;
-        if self.dpi_levels.len() > DPI_SLOTS || self.gshift_buttons.len() != button_count || self.leds.len() != LED_SLOTS {
+        if self.dpi_levels.len() > DPI_SLOTS
+            || self.gshift_buttons.len() != button_count
+            || self.leds.len() != LED_SLOTS
+        {
             return Err(Error::Invalid("incomplete profile".into()));
         }
         sector[OFF_REPORT_RATE] = self.report_rate_ms;

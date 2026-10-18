@@ -23,6 +23,7 @@ pub struct KeyInfo {
 }
 
 /// Keys the firmware can emit as the target of a remap.
+#[rustfmt::skip]
 pub const TARGET_KEYS: &[KeyInfo] = &[
     k(0x04, "A"), k(0x05, "B"), k(0x06, "C"), k(0x07, "D"), k(0x08, "E"), k(0x09, "F"),
     k(0x0A, "G"), k(0x0B, "H"), k(0x0C, "I"), k(0x0D, "J"), k(0x0E, "K"), k(0x0F, "L"),

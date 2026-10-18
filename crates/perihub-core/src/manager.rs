@@ -143,11 +143,8 @@ impl Manager {
             slots.mouse.is_some()
         };
         if let (false, Some(info)) = (mouse_present, &mouse) {
-            let result = info
-                .open_device(api)
-                .map_err(Error::from)
-                .and_then(HidppDevice::new)
-                .and_then(MouseTask::open);
+            let result =
+                info.open_device(api).map_err(Error::from).and_then(HidppDevice::new).and_then(MouseTask::open);
             let mut slots = self.slots.lock().unwrap();
             let error = match result {
                 Ok(task) => {

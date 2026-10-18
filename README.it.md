@@ -213,6 +213,7 @@ Non compilare l'app con il solo `cargo build`: quell'eseguibile carica l'interfa
 Test e controlli:
 
 ```sh
+cargo fmt --all                 # formattazione (la CI la controlla)
 cargo test --workspace          # include test sui settori letti da un G502 HERO reale
 cargo clippy --workspace --all-targets
 cd app && npm run check         # controllo dei tipi dell'interfaccia
@@ -255,7 +256,7 @@ Segnalazioni di bug, richieste di dispositivi e pull request sono benvenute.
 - **Domande e idee**: usa le [Discussions](https://github.com/hex-dump/perihub/discussions).
 - **Bug**: indica il sistema operativo, il dispositivo e cosa ha mostrato l'app.
 - **Nuovi dispositivi**: apri una [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml) con il modello e l'ID USB.
-- **Codice**: prima di aprire una pull request lancia `cargo test`, `cargo clippy` e `npm run check`.
+- **Codice**: prima di aprire una pull request lancia `cargo fmt`, `cargo test`, `cargo clippy` e `npm run check`.
 
 ## Sostieni il progetto
 

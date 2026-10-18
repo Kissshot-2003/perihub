@@ -51,14 +51,16 @@ fn ignore_disconnected(result: perihub_core::Result<()>) -> perihub_core::Result
 pub async fn kb_set_lighting(state: State<'_, AppState>, lighting: KeyboardLighting) -> CmdResult<()> {
     update_keyboard_config(&state, |c| c.lighting = lighting.clone())?;
     let manager = state.manager.clone();
-    blocking(move || ignore_disconnected(manager.keyboard().and_then(|k| k.call(move |k| k.set_lighting(lighting))))).await
+    blocking(move || ignore_disconnected(manager.keyboard().and_then(|k| k.call(move |k| k.set_lighting(lighting)))))
+        .await
 }
 
 #[tauri::command]
 pub async fn kb_set_brightness(state: State<'_, AppState>, level: u8) -> CmdResult<()> {
     update_keyboard_config(&state, |c| c.brightness = level)?;
     let manager = state.manager.clone();
-    blocking(move || ignore_disconnected(manager.keyboard().and_then(|k| k.call(move |k| k.set_brightness(level))))).await
+    blocking(move || ignore_disconnected(manager.keyboard().and_then(|k| k.call(move |k| k.set_brightness(level)))))
+        .await
 }
 
 #[tauri::command]
@@ -113,7 +115,11 @@ pub async fn mouse_get_state(state: State<'_, AppState>) -> CmdResult<MouseState
 }
 
 #[tauri::command]
-pub async fn mouse_save_profile(state: State<'_, AppState>, number: u8, settings: ProfileSettings) -> CmdResult<MouseState> {
+pub async fn mouse_save_profile(
+    state: State<'_, AppState>,
+    number: u8,
+    settings: ProfileSettings,
+) -> CmdResult<MouseState> {
     let manager = state.manager.clone();
     blocking(move || manager.mouse()?.call(move |m| m.save_profile(number, &settings))).await
 }

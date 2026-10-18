@@ -2,8 +2,8 @@
 
 use perihub_core::Rgb;
 use perihub_core::hidpp::profile::{
-    ButtonAction, LedEffect, ProfileSettings, SpecialFunction, build_directory, crc_ccitt, crc_is_valid, parse_directory,
-    write_crc,
+    ButtonAction, LedEffect, ProfileSettings, SpecialFunction, build_directory, crc_ccitt, crc_is_valid,
+    parse_directory, write_crc,
 };
 
 const BUTTONS: usize = 11;
@@ -57,10 +57,7 @@ fn profile_one_contents() {
 #[test]
 fn profile_two_breathing_led() {
     let p = ProfileSettings::parse(&sector(2), BUTTONS).unwrap();
-    assert_eq!(
-        p.leds[1],
-        LedEffect::Breathing { color: Rgb::new(0x00, 0xdc, 0xff), period_ms: 8000, brightness: 100 }
-    );
+    assert_eq!(p.leds[1], LedEffect::Breathing { color: Rgb::new(0x00, 0xdc, 0xff), period_ms: 8000, brightness: 100 });
 }
 
 #[test]

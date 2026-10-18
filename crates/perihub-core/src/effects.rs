@@ -17,15 +17,28 @@ use crate::color::Rgb;
 pub enum KeyboardLighting {
     Off,
     /// One color for each of the 8 zones, left to right.
-    Static { colors: [Rgb; ZONES] },
+    Static {
+        colors: [Rgb; ZONES],
+    },
     /// Fixed gradient between two colors.
-    Gradient { from: Rgb, to: Rgb },
+    Gradient {
+        from: Rgb,
+        to: Rgb,
+    },
     /// The zone colors pulse together.
-    Breathing { colors: [Rgb; ZONES], period_ms: u32 },
+    Breathing {
+        colors: [Rgb; ZONES],
+        period_ms: u32,
+    },
     /// All zones move together around the color wheel.
-    ColorCycle { period_ms: u32 },
+    ColorCycle {
+        period_ms: u32,
+    },
     /// Rainbow scrolling across the zones.
-    Wave { period_ms: u32, reverse: bool },
+    Wave {
+        period_ms: u32,
+        reverse: bool,
+    },
     /// The keyboard's built-in rainbow (does not need the app running).
     HardwareRainbow,
 }
@@ -56,9 +69,7 @@ impl KeyboardLighting {
         Frame::Colors(match self {
             Self::Off => [Rgb::BLACK; ZONES],
             Self::Static { colors } => *colors,
-            Self::Gradient { from, to } => {
-                std::array::from_fn(|i| from.lerp(*to, i as f32 / (ZONES - 1) as f32))
-            }
+            Self::Gradient { from, to } => std::array::from_fn(|i| from.lerp(*to, i as f32 / (ZONES - 1) as f32)),
             Self::Breathing { colors, period_ms } => {
                 // Raised cosine: from off to full and back, with a slightly lit minimum.
                 let level = 0.05 + 0.95 * (0.5 - 0.5 * (2.0 * PI * phase(*period_ms)).cos());
