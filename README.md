@@ -113,7 +113,7 @@ The list comes from [libratbag](https://github.com/libratbag/libratbag). Wireles
 | Logitech G903 HERO | `046d:c091` |
 | Logitech MX518 | `046d:c08e` |
 
-If you own one of these, please open a [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml) and tell us what PeriHub shows: a model becomes fully supported once someone confirms it works.
+If you own one of these, please fill in a [mouse test report](https://github.com/hex-dump/perihub/issues/new?template=mouse_test.yml) with what PeriHub shows: it takes a few minutes, and a model becomes fully supported once someone confirms it works.
 
 </details>
 
@@ -299,6 +299,7 @@ Bug reports, device requests and pull requests are welcome.
 - **Questions and ideas**: use [Discussions](https://github.com/hex-dump/perihub/discussions).
 - **Bugs**: include your OS, the device, and what the app showed.
 - **New devices**: open a [device request](https://github.com/hex-dump/perihub/issues/new?template=device_request.yml) with the model and USB ID.
+- **Experimental Logitech mice**: fill in a [mouse test report](https://github.com/hex-dump/perihub/issues/new?template=mouse_test.yml).
 - **Code**: run `cargo fmt`, `cargo test`, `cargo clippy` and `npm run check` before opening a pull request.
 
 ## Support the project

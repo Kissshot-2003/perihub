@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest a new feature for a device PeriHub already supports
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a new device, use **Device request** instead. Check the [known limitations](https://github.com/hex-dump/perihub#known-limitations) and the open issues first: the feature may already be planned.
+  - type: textarea
+    id: feature
+    attributes:
+      label: What you would like PeriHub to do
+      description: What you use in SteelSeries GG or Logitech G HUB, or what you are missing.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: e.g. Apex 3 TKL, G502 HERO

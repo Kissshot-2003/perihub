@@ -143,8 +143,8 @@
 {#if info && !info.verified}
   <div class="notice info">
     <b>Experimental support.</b> PeriHub has not been tested on the {info.model} yet, so it only reads the mouse:
-    you can look at its profiles, but nothing can be changed. If you own one, a device request on PeriHub's GitHub
-    page helps get it fully supported.
+    you can look at its profiles, but nothing can be changed. A mouse test report on PeriHub's GitHub page helps get
+    it fully supported.
   </div>
   {#if info.host_mode}
     <div class="notice info">

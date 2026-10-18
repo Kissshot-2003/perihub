@@ -1,0 +1,61 @@
+name: Mouse test report
+description: Tell us how PeriHub works with one of the experimental Logitech mice
+labels: ["mouse test"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! Experimental mice are read-only: PeriHub only reads them and changes nothing, so testing is safe. A model becomes fully supported once someone confirms that what PeriHub shows matches the mouse.
+  - type: input
+    id: model
+    attributes:
+      label: Mouse model
+      description: The name PeriHub shows at the top of the mouse page.
+      placeholder: e.g. G502 X
+    validations:
+      required: true
+  - type: input
+    id: usb-id
+    attributes:
+      label: USB ID (vendor:product)
+      description: "Linux: `lsusb`. Windows: Device Manager → device → Properties → Details → Hardware IDs (VID_xxxx&PID_xxxx)."
+      placeholder: e.g. 046d:c099
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PeriHub version
+      placeholder: e.g. 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: checkboxes
+    id: matches
+    attributes:
+      label: What PeriHub shows correctly
+      description: Compare with the official software or with how the mouse behaves.
+      options:
+        - label: Profiles (number of profiles, which one is active)
+        - label: DPI levels and the default level
+        - label: Polling rate
+        - label: Button assignments
+        - label: Lighting zones and their colors
+  - type: textarea
+    id: notices
+    attributes:
+      label: Messages and errors
+      description: Any message PeriHub shows on the mouse page (for example about software control or the profile format), or an error if the mouse does not appear.
+  - type: textarea
+    id: details
+    attributes:
+      label: What is wrong or missing
+      description: Anything that does not match. Screenshots are very helpful.

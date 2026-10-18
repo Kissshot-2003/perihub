@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- The experimental mouse notice points to the new mouse test report form on GitHub.
+
 ## 0.2.0 — 2026-10-18
 
 First version tried on a real Windows PC: keyboard lighting, key remapping and mouse profiles work.

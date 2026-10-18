@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: PeriHub version
-      placeholder: e.g. 0.1.0
+      placeholder: e.g. 0.2.0
     validations:
       required: true
   - type: input
@@ -23,6 +23,7 @@ body:
       options:
         - SteelSeries Apex 3 TKL
         - Logitech G502 HERO
+        - Another Logitech mouse (experimental)
         - Both / not device-specific
     validations:
       required: true
