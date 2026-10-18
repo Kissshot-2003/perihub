@@ -158,6 +158,14 @@ chmod +x PeriHub_*_amd64.AppImage
 ./PeriHub_*_amd64.AppImage
 ```
 
+**Arch, CachyOS and other Arch-based distributions**: the `perihub-bin` package will be published on the AUR soon. Until then, you can build it from the repository; it installs the udev rule too:
+
+```sh
+git clone https://github.com/hex-dump/perihub.git
+cd perihub/packaging/aur/perihub-bin
+makepkg -si
+```
+
 **Debian/Ubuntu** (`.deb`) and **Fedora/openSUSE** (`.rpm`): install the package with your distribution's package manager.
 
 #### USB permissions
