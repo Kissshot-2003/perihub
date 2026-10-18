@@ -1,5 +1,5 @@
-//! Comandi chiamati dall'interfaccia. Le operazioni sui dispositivi possono durare qualche
-//! secondo, quindi girano fuori dal thread principale per non bloccare la finestra.
+//! Commands called by the interface. Device operations can take a few seconds,
+//! so they run off the main thread to avoid freezing the window.
 
 use perihub_core::apex::{KeyBinding, keys};
 use perihub_core::config::KeyboardConfig;
@@ -25,14 +25,14 @@ pub fn get_status(state: State<'_, AppState>) -> DeviceStatus {
     state.manager.status()
 }
 
-// ---- Tastiera ----
+// ---- Keyboard ----
 
 #[tauri::command]
 pub fn kb_get_config(state: State<'_, AppState>) -> KeyboardConfig {
     state.config.lock().unwrap().keyboard.clone()
 }
 
-/// Salva le impostazioni della tastiera (valgono anche se è scollegata: verranno applicate al collegamento).
+/// Saves the keyboard settings (also while it is unplugged: they are applied when it is connected).
 fn update_keyboard_config(state: &AppState, change: impl FnOnce(&mut KeyboardConfig)) -> CmdResult<()> {
     let mut config = state.config.lock().unwrap();
     change(&mut config.keyboard);
@@ -160,7 +160,7 @@ pub async fn mouse_revert_preview(state: State<'_, AppState>) -> CmdResult<()> {
     blocking(move || ignore_disconnected(manager.mouse().and_then(|m| m.call(|m| m.revert_preview())))).await
 }
 
-// ---- Programma ----
+// ---- App ----
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppSettings {

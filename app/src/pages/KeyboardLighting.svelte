@@ -69,12 +69,12 @@
     if ("period_ms" in l) period = l.period_ms;
     if (l.type === "wave") reverse = l.reverse;
     brightness = config.brightness;
-    // La luminosità si può cambiare anche da tastiera (SteelSeries + F11/F12): leggiamo quella reale.
+    // Brightness can also be changed from the keyboard (SteelSeries + F11/F12): read the actual value.
     if (connected) {
       try {
         brightness = await api.readBrightness();
       } catch {
-        /* resta quella salvata */
+        /* keep the saved value */
       }
     }
     loaded = true;

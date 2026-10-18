@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
-// Porta fissa: Tauri carica l'interfaccia da qui durante lo sviluppo.
+// Fixed port: Tauri loads the interface from here during development.
 export default defineConfig({
   plugins: [svelte()],
   clearScreen: false,

@@ -1,4 +1,4 @@
-//! Stato e operazioni della tastiera, eseguite nel thread dedicato al dispositivo.
+//! Keyboard state and operations, run on the device's dedicated thread.
 
 use std::time::{Duration, Instant};
 
@@ -11,7 +11,7 @@ use crate::error::{Error, Result};
 use crate::worker::DeviceTask;
 
 const FRAME_INTERVAL: Duration = Duration::from_millis(33);
-/// Ogni tanto rimandiamo i colori fissi: dopo una sospensione la tastiera può tornare all'arcobaleno.
+/// Static colors are resent now and then: after a suspend the keyboard may fall back to the rainbow.
 const STATIC_REFRESH: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Serialize)]
@@ -71,7 +71,7 @@ impl KeyboardTask {
         self.dev.set_brightness(level)
     }
 
-    /// Luminosità attuale, che l'utente può aver cambiato con SteelSeries + F11/F12.
+    /// Current brightness, which the user may have changed with SteelSeries + F11/F12.
     pub fn brightness(&self) -> Result<u8> {
         self.dev.brightness()
     }
@@ -80,7 +80,7 @@ impl KeyboardTask {
         Ok(Keymap { normal: self.dev.read_layer(0)?, steelseries: self.dev.read_layer(1)? })
     }
 
-    /// Modifica la mappa dei tasti dopo averne salvato una copia di sicurezza.
+    /// Changes the key map after saving a backup of it.
     pub fn apply_keymap(&mut self, changes: &[(u8, u8, KeyBinding)]) -> Result<Keymap> {
         let before = self.keymap()?;
         write_backup("apex3tkl", "keymap", &[("keymap.json", serde_json::to_string_pretty(&before)?.as_bytes())])?;
@@ -88,7 +88,7 @@ impl KeyboardTask {
         Ok(Keymap { normal, steelseries })
     }
 
-    /// Riporta tutti i tasti ai valori di fabbrica.
+    /// Resets all keys to their factory values.
     pub fn reset_keymap(&mut self) -> Result<Keymap> {
         let current = self.keymap()?;
         let mut changes = Vec::new();

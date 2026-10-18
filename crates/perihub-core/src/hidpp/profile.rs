@@ -1,7 +1,7 @@
-//! Formato dei profili salvati nella memoria del mouse (HID++ 0x8100, formato "G303"/2).
+//! Format of the profiles stored in the mouse's memory (HID++ 0x8100, format "G303"/2).
 //!
-//! Le modifiche vengono sempre applicate sopra i byte originali del settore: i campi che
-//! non gestiamo (pulsanti G-Shift non modellati, LED alternativi, nome, macro…) restano intatti.
+//! Changes are always applied on top of the sector's original bytes: fields we do not
+//! manage (unmodeled G-Shift buttons, alternate LEDs, name, macros…) stay intact.
 
 use serde::{Deserialize, Serialize};
 
@@ -88,19 +88,19 @@ impl SpecialFunction {
     }
 }
 
-/// Cosa fa un pulsante del mouse.
+/// What a mouse button does.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ButtonAction {
-    /// Pulsante del mouse, 1 = sinistro, 2 = destro, 3 = centrale, 4 = indietro, 5 = avanti…
+    /// Mouse button, 1 = left, 2 = right, 3 = middle, 4 = back, 5 = forward…
     Mouse { button: u8 },
-    /// Tasto della tastiera (usage HID) con i modificatori HID standard (bit 0 = Ctrl sx, 1 = Shift sx, 2 = Alt sx, 3 = Win sx…).
+    /// Keyboard key (HID usage) with the standard HID modifiers (bit 0 = left Ctrl, 1 = left Shift, 2 = left Alt, 3 = left Win…).
     Key { modifiers: u8, key: u8 },
-    /// Tasto multimediale (usage della pagina HID Consumer, es. 0x00CD = play/pausa).
+    /// Media key (usage from the HID Consumer page, e.g. 0x00CD = play/pause).
     Consumer { usage: u16 },
     Special { function: SpecialFunction },
     Disabled,
-    /// Macro o tipo non gestito: conservato byte per byte.
+    /// Macro or unsupported type: kept byte for byte.
     Raw { bytes: [u8; 4] },
 }
 
@@ -147,7 +147,7 @@ impl ButtonAction {
     }
 }
 
-/// Effetto di una zona LED, nel formato a 11 byte condiviso da profili e comandi 0x8070.
+/// Effect of a LED zone, in the 11-byte format shared by profiles and 0x8070 commands.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
 pub enum LedEffect {
@@ -155,7 +155,7 @@ pub enum LedEffect {
     Fixed { color: Rgb },
     Breathing { color: Rgb, period_ms: u16, brightness: u8 },
     Cycle { period_ms: u16, brightness: u8 },
-    /// Effetto non gestito: conservato byte per byte.
+    /// Unsupported effect: kept byte for byte.
     Raw { bytes: [u8; LED_LEN] },
 }
 
@@ -181,7 +181,7 @@ impl LedEffect {
     }
 
     pub fn encode(&self) -> [u8; LED_LEN] {
-        // 100% si codifica come 0, come fa il firmware.
+        // 100% is encoded as 0, like the firmware does.
         let intensity = |v: u8| if v >= 100 { 0 } else { v.max(1) };
         let mut out = [0u8; LED_LEN];
         match *self {
@@ -207,18 +207,18 @@ impl LedEffect {
     }
 }
 
-/// Impostazioni di un profilo che l'interfaccia può modificare.
+/// Profile settings that the interface can edit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileSettings {
-    /// Intervallo di polling in ms (1 = 1000 Hz, 2 = 500 Hz, 4 = 250 Hz, 8 = 125 Hz).
+    /// Polling interval in ms (1 = 1000 Hz, 2 = 500 Hz, 4 = 250 Hz, 8 = 125 Hz).
     pub report_rate_ms: u8,
-    /// Livelli DPI attivi (da 1 a 5).
+    /// Active DPI levels (1 to 5).
     pub dpi_levels: Vec<u16>,
     pub default_dpi_index: u8,
-    /// Livello usato mentre si tiene premuto il pulsante "DPI Shift" (sniper).
+    /// Level used while the "DPI Shift" (sniper) button is held.
     pub shift_dpi_index: u8,
     pub buttons: Vec<ButtonAction>,
-    /// Funzioni dei pulsanti mentre G-Shift è premuto.
+    /// Button functions while G-Shift is held.
     pub gshift_buttons: Vec<ButtonAction>,
     pub leds: Vec<LedEffect>,
 }
@@ -246,7 +246,7 @@ impl ProfileSettings {
         })
     }
 
-    /// Controlla che i valori siano accettabili per il mouse.
+    /// Checks that the values are acceptable for the mouse.
     pub fn validate(&self, button_count: usize, dpi_min: u16, dpi_max: u16, rates_ms: &[u8]) -> Result<()> {
         if !rates_ms.contains(&self.report_rate_ms) {
             return Err(Error::Invalid(format!("polling interval {} ms", self.report_rate_ms)));
@@ -273,7 +273,7 @@ impl ProfileSettings {
         Ok(())
     }
 
-    /// Scrive le impostazioni sopra un settore esistente e ricalcola il CRC.
+    /// Writes the settings on top of an existing sector and recomputes the CRC.
     pub fn apply(&self, sector: &mut [u8]) -> Result<()> {
         let button_count = self.buttons.len();
         check_layout(sector, button_count)?;
@@ -308,7 +308,7 @@ fn check_layout(sector: &[u8], button_count: usize) -> Result<()> {
     Ok(())
 }
 
-/// Elenco dei profili abilitati, letto dal settore 0x0000.
+/// List of enabled profiles, read from sector 0x0000.
 pub fn parse_directory(sector: &[u8], profile_count: usize) -> Vec<bool> {
     let mut enabled = vec![false; profile_count];
     for entry in sector.as_chunks::<4>().0.iter().take(profile_count) {

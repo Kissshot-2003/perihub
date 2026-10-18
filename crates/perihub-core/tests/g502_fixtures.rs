@@ -1,4 +1,4 @@
-//! Test sui settori letti da un G502 HERO reale (firmware U1 27.03).
+//! Tests on sectors read from a real G502 HERO (firmware U1 27.03).
 
 use perihub_core::Rgb;
 use perihub_core::hidpp::profile::{
@@ -20,7 +20,7 @@ fn crc_matches_device() {
     for id in 0..=5 {
         assert!(crc_is_valid(&sector(id)), "sector {id}");
     }
-    // I settori di fabbrica non hanno CRC.
+    // Factory sectors have no CRC.
     assert!(!crc_is_valid(&sector(0x0101)));
 }
 

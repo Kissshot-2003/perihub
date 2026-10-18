@@ -1,4 +1,4 @@
-//! Strumento a riga di comando per provare PeriHub senza interfaccia grafica.
+//! Command-line tool to try PeriHub without the graphical interface.
 
 use std::time::{Duration, Instant};
 

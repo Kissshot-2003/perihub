@@ -1,6 +1,6 @@
 import type { KeyboardLighting, Rgb } from "./api";
 
-// Stessa matematica di perihub-core/src/effects.rs, per l'anteprima nell'interfaccia.
+// Same math as perihub-core/src/effects.rs, for the preview in the interface.
 
 export const ZONES = 8;
 
@@ -27,7 +27,7 @@ function phase(elapsedMs: number, periodMs: number): number {
   return (elapsedMs / Math.max(200, periodMs)) % 1;
 }
 
-/** Colori CSS delle 8 zone all'istante `elapsedMs`. */
+/** CSS colors of the 8 zones at time `elapsedMs`. */
 export function previewFrame(lighting: KeyboardLighting, elapsedMs: number): string[] {
   switch (lighting.type) {
     case "off":

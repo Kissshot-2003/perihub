@@ -1,4 +1,4 @@
-// Su Windows niente finestra del terminale nelle build di rilascio.
+// No console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
@@ -16,7 +16,7 @@ pub struct AppState {
     pub config: Mutex<AppConfig>,
 }
 
-/// Argomento passato dall'avvio automatico: parte nascosto nell'area di notifica.
+/// Argument passed by autostart: start hidden in the system tray.
 const HIDDEN_ARG: &str = "--hidden";
 
 fn show_main(app: &AppHandle) {
@@ -32,7 +32,7 @@ fn main() {
     let hidden_requested = std::env::args().any(|a| a == HIDDEN_ARG);
 
     tauri::Builder::default()
-        // Un secondo avvio riporta in primo piano la finestra già aperta.
+        // Launching a second time brings the already open window to the front.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -72,7 +72,7 @@ fn main() {
             }
             tray.build(app)?;
 
-            // Solo in sviluppo: PERIHUB_PAGE=mouse:buttons apre direttamente una pagina.
+            // Development only: PERIHUB_PAGE=mouse:buttons opens a page directly.
             #[cfg(debug_assertions)]
             if let (Ok(page), Some(window)) = (std::env::var("PERIHUB_PAGE"), app.get_webview_window("main")) {
                 let mut url = window.url()?;
@@ -86,7 +86,7 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Chiudere la finestra la nasconde: il programma resta attivo per mantenere luci ed effetti.
+            // Closing the window hides it: the app keeps running to maintain lighting and effects.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();

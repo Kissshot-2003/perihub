@@ -1,6 +1,6 @@
-//! Protocollo Logitech HID++ 2.0 (mouse cablati come il G502 HERO).
+//! Logitech HID++ 2.0 protocol (wired mice such as the G502 HERO).
 //!
-//! Riferimenti: libratbag (MIT) e i dati letti dal dispositivo reale.
+//! References: libratbag (MIT) and data read from the real device.
 
 pub mod profile;
 
@@ -16,7 +16,7 @@ use profile::LedEffect;
 const REPORT_SHORT: u8 = 0x10;
 const REPORT_LONG: u8 = 0x11;
 const LONG_LEN: usize = 20;
-/// Indice usato dai dispositivi collegati direttamente via USB (senza ricevitore).
+/// Device index used by devices connected directly over USB (no receiver).
 const DEVICE_INDEX: u8 = 0xFF;
 const SOFTWARE_ID: u8 = 0x0B;
 const TIMEOUT: Duration = Duration::from_millis(1000);
@@ -32,8 +32,8 @@ pub mod feature {
     pub const ONBOARD_PROFILES: u16 = 0x8100;
 }
 
-/// Le sole funzioni HID++ che il programma può usare. Le altre (DFU, funzioni interne
-/// Logitech 0x18xx, 0x00c2…) non vanno mai toccate.
+/// The only HID++ features the app may use. The others (DFU, Logitech internal
+/// features 0x18xx, 0x00c2…) must never be touched.
 const ALLOWED_FEATURES: &[u16] = &[
     feature::ROOT,
     feature::FEATURE_SET,
@@ -45,7 +45,7 @@ const ALLOWED_FEATURES: &[u16] = &[
     feature::ONBOARD_PROFILES,
 ];
 
-/// Settori della memoria del mouse riservati ai profili di fabbrica (sola lettura).
+/// Mouse memory sectors reserved for the factory profiles (read-only).
 pub const ROM_SECTOR_BASE: u16 = 0x0100;
 
 #[derive(Debug, Clone, Serialize)]
@@ -53,14 +53,14 @@ pub struct DpiCapabilities {
     pub min: u16,
     pub max: u16,
     pub step: u16,
-    /// Valori ammessi, se il sensore ne espone un elenco invece di un intervallo.
+    /// Allowed values, if the sensor exposes a list instead of a range.
     pub list: Vec<u16>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LedZone {
     pub index: u8,
-    /// 1 = principale, 2 = logo (secondo la specifica HID++ 0x8070).
+    /// 1 = primary, 2 = logo (per the HID++ 0x8070 specification).
     pub location: u16,
     pub effects: Vec<u16>,
 }
@@ -122,7 +122,7 @@ impl HidppDevice {
                 return Err(Error::Timeout);
             }
             let n = self.dev.read_timeout(&mut buf, remaining.as_millis().max(1) as i32)?;
-            // Sulla stessa interfaccia arrivano anche i report tastiera/multimediali del mouse: li ignoriamo.
+            // The mouse's keyboard/media reports also arrive on this interface: ignore them.
             if n < 7 || !(buf[0] == REPORT_SHORT || buf[0] == REPORT_LONG) || buf[1] != DEVICE_INDEX {
                 continue;
             }
@@ -195,7 +195,7 @@ impl HidppDevice {
         Ok(out)
     }
 
-    // ---- 0x2201 DPI regolabili ----
+    // ---- 0x2201 adjustable DPI ----
 
     pub fn dpi_capabilities(&mut self, sensor: u8) -> Result<DpiCapabilities> {
         let r = self.call(feature::ADJUSTABLE_DPI, 1, &[sensor])?;
@@ -222,22 +222,22 @@ impl HidppDevice {
         Ok(caps)
     }
 
-    /// Restituisce (DPI attuali, DPI predefiniti).
+    /// Returns (current DPI, default DPI).
     pub fn sensor_dpi(&mut self, sensor: u8) -> Result<(u16, u16)> {
         let r = self.call(feature::ADJUSTABLE_DPI, 2, &[sensor])?;
         Ok((u16::from_be_bytes([r[1], r[2]]), u16::from_be_bytes([r[3], r[4]])))
     }
 
-    /// Cambia i DPI subito, senza scrivere nella memoria del mouse.
+    /// Changes the DPI immediately, without writing to the mouse's memory.
     pub fn set_sensor_dpi(&mut self, sensor: u8, dpi: u16) -> Result<()> {
         let [hi, lo] = dpi.to_be_bytes();
         self.call(feature::ADJUSTABLE_DPI, 3, &[sensor, hi, lo])?;
         Ok(())
     }
 
-    // ---- 0x8060 frequenza di polling ----
+    // ---- 0x8060 polling rate ----
 
-    /// Intervalli supportati in millisecondi (1 ms = 1000 Hz).
+    /// Supported intervals in milliseconds (1 ms = 1000 Hz).
     pub fn report_rates(&mut self) -> Result<Vec<u8>> {
         let mask = self.call(feature::REPORT_RATE, 0, &[])?[0];
         Ok((0..8).filter(|bit| mask & (1 << bit) != 0).map(|bit| bit + 1).collect())
@@ -247,7 +247,7 @@ impl HidppDevice {
         Ok(self.call(feature::REPORT_RATE, 1, &[])?[0])
     }
 
-    // ---- 0x8070 effetti LED ----
+    // ---- 0x8070 LED effects ----
 
     pub fn led_zones(&mut self) -> Result<Vec<LedZone>> {
         let count = self.call(feature::COLOR_LED_EFFECTS, 0, &[])?[0];
@@ -264,9 +264,9 @@ impl HidppDevice {
         Ok(zones)
     }
 
-    /// Applica un effetto LED subito, solo in RAM (anteprima): non tocca i profili salvati.
-    /// `zone.effects` serve perché qui il mouse vuole la posizione dell'effetto nel suo elenco,
-    /// mentre nei profili salvati si usa il codice dell'effetto.
+    /// Applies a LED effect immediately, in RAM only (preview): saved profiles are not touched.
+    /// `zone.effects` is needed because here the mouse wants the effect's position in its list,
+    /// while saved profiles use the effect code.
     pub fn preview_led_effect(&mut self, zone: &LedZone, effect: &LedEffect) -> Result<()> {
         let mut encoded = effect.encode();
         let position = zone
@@ -283,7 +283,7 @@ impl HidppDevice {
         Ok(())
     }
 
-    // ---- 0x8100 profili in memoria ----
+    // ---- 0x8100 onboard profiles ----
 
     pub fn onboard_info(&mut self) -> Result<OnboardInfo> {
         let r = self.call(feature::ONBOARD_PROFILES, 0, &[])?;
@@ -301,7 +301,7 @@ impl HidppDevice {
         })
     }
 
-    /// 1 = profili in memoria del mouse, 2 = controllo da software.
+    /// 1 = onboard profiles in the mouse's memory, 2 = host (software) control.
     pub fn onboard_mode(&mut self) -> Result<u8> {
         Ok(self.call(feature::ONBOARD_PROFILES, 2, &[])?[0])
     }
@@ -314,7 +314,7 @@ impl HidppDevice {
         Ok(())
     }
 
-    /// Profilo attivo, numerato da 1.
+    /// Active profile, numbered from 1.
     pub fn active_profile(&mut self) -> Result<u8> {
         Ok(self.call(feature::ONBOARD_PROFILES, 4, &[])?[1])
     }
@@ -341,7 +341,7 @@ impl HidppDevice {
         let mut data = vec![0u8; size];
         let mut offset = 0usize;
         while offset < size {
-            // Il firmware rifiuta letture oltre la fine del settore: l'ultimo blocco si allinea a size-16.
+            // The firmware rejects reads past the end of the sector: the last block is aligned to size-16.
             let at = if size - offset < 16 { size - 16 } else { offset };
             let [s_hi, s_lo] = sector.to_be_bytes();
             let [o_hi, o_lo] = (at as u16).to_be_bytes();
@@ -352,7 +352,7 @@ impl HidppDevice {
         Ok(data)
     }
 
-    /// Scrive un settore utente (directory o profilo). I settori di fabbrica non sono scrivibili.
+    /// Writes a user sector (directory or profile). Factory sectors cannot be written.
     pub fn write_sector(&mut self, sector: u16, data: &[u8], info: &OnboardInfo) -> Result<()> {
         if sector > info.profile_count as u16 {
             return Err(Error::Invalid(format!("sector {sector:#06x} is not writable")));

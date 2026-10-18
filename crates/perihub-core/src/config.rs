@@ -1,4 +1,4 @@
-//! Impostazioni salvate su disco e copie di sicurezza.
+//! Settings saved to disk, and backups.
 
 use std::fs;
 use std::path::PathBuf;
@@ -13,7 +13,7 @@ use crate::error::Result;
 #[serde(default)]
 pub struct KeyboardConfig {
     pub lighting: KeyboardLighting,
-    /// Luminosità 0–16 (scala della tastiera).
+    /// Brightness 0–16 (the keyboard's scale).
     pub brightness: u8,
 }
 
@@ -27,7 +27,7 @@ impl Default for KeyboardConfig {
 #[serde(default)]
 pub struct AppConfig {
     pub keyboard: KeyboardConfig,
-    /// Avvia nascosto nell'area di notifica.
+    /// Start hidden in the system tray.
     pub start_hidden: bool,
 }
 
@@ -53,7 +53,7 @@ impl AppConfig {
     pub fn save(&self) -> Result<()> {
         let path = config_path();
         fs::create_dir_all(path.parent().unwrap())?;
-        // Scrittura atomica: un crash a metà non lascia un file troncato.
+        // Atomic write: a crash halfway through does not leave a truncated file.
         let temp = path.with_extension("json.tmp");
         fs::write(&temp, serde_json::to_string_pretty(self)?)?;
         fs::rename(temp, path)?;
@@ -61,7 +61,7 @@ impl AppConfig {
     }
 }
 
-/// Salva una copia di sicurezza prima di ogni scrittura nella memoria di un dispositivo.
+/// Saves a backup before every write to a device's memory.
 pub fn write_backup(device: &str, label: &str, files: &[(&str, &[u8])]) -> Result<PathBuf> {
     let stamp = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let dir = config_dir().join("backups").join(device).join(format!("{stamp}-{label}"));

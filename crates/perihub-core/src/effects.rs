@@ -1,8 +1,8 @@
-//! Effetti di illuminazione per la Apex 3 TKL.
+//! Lighting effects for the Apex 3 TKL.
 //!
-//! La tastiera conosce solo "colori fissi per zona" e "arcobaleno": tutti gli altri effetti
-//! (respiro, ciclo colori, onda…) vengono calcolati qui e inviati fotogramma per fotogramma,
-//! esattamente come fa SteelSeries GG.
+//! The keyboard only knows "fixed colors per zone" and "rainbow": every other effect
+//! (breathing, color cycle, wave…) is computed here and sent frame by frame,
+//! exactly like SteelSeries GG does.
 
 use std::f32::consts::PI;
 use std::time::Duration;
@@ -16,17 +16,17 @@ use crate::color::Rgb;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum KeyboardLighting {
     Off,
-    /// Un colore per ciascuna delle 8 zone, da sinistra a destra.
+    /// One color for each of the 8 zones, left to right.
     Static { colors: [Rgb; ZONES] },
-    /// Sfumatura fissa tra due colori.
+    /// Fixed gradient between two colors.
     Gradient { from: Rgb, to: Rgb },
-    /// I colori delle zone pulsano insieme.
+    /// The zone colors pulse together.
     Breathing { colors: [Rgb; ZONES], period_ms: u32 },
-    /// Tutte le zone scorrono insieme lungo la ruota dei colori.
+    /// All zones move together around the color wheel.
     ColorCycle { period_ms: u32 },
-    /// Arcobaleno che scorre sulle zone.
+    /// Rainbow scrolling across the zones.
     Wave { period_ms: u32, reverse: bool },
-    /// Arcobaleno integrato nella tastiera (non richiede il programma in esecuzione).
+    /// The keyboard's built-in rainbow (does not need the app running).
     HardwareRainbow,
 }
 
@@ -36,7 +36,7 @@ impl Default for KeyboardLighting {
     }
 }
 
-/// Cosa inviare alla tastiera per un dato istante.
+/// What to send to the keyboard at a given moment.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Frame {
     Colors([Rgb; ZONES]),
@@ -60,7 +60,7 @@ impl KeyboardLighting {
                 std::array::from_fn(|i| from.lerp(*to, i as f32 / (ZONES - 1) as f32))
             }
             Self::Breathing { colors, period_ms } => {
-                // Coseno rialzato: da spento a pieno e ritorno, con un minimo leggermente acceso.
+                // Raised cosine: from off to full and back, with a slightly lit minimum.
                 let level = 0.05 + 0.95 * (0.5 - 0.5 * (2.0 * PI * phase(*period_ms)).cos());
                 colors.map(|c| c.scale(level))
             }

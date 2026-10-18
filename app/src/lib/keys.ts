@@ -1,7 +1,7 @@
 import type { KeyBinding, SpecialFunction } from "./api";
 import { prefs, type LayoutId } from "./prefs.svelte";
 
-/** Nomi dei tasti che non dipendono dal layout (usage HID → testo sul tasto). */
+/** Key names that do not depend on the layout (HID usage → keycap label). */
 const NAMES: Record<number, string> = {
   0x28: "Enter", 0x29: "Esc", 0x2a: "⌫", 0x2b: "Tab", 0x2c: "Space", 0x39: "Caps Lock",
   0x46: "PrtSc", 0x47: "ScrLk", 0x48: "Pause", 0x49: "Ins", 0x4a: "Home", 0x4b: "PgUp",
@@ -13,7 +13,7 @@ const NAMES: Record<number, string> = {
   0xe7: "R Win", 0xf0: "SteelSeries",
 };
 
-/** Simboli che cambiano con il layout. */
+/** Symbols that change with the layout. */
 const LEGENDS: Record<LayoutId, Record<number, string>> = {
   "ansi-us": {
     0x2d: "-", 0x2e: "=", 0x2f: "[", 0x30: "]", 0x31: "\\", 0x32: "ISO #", 0x33: ";", 0x34: "'",
@@ -42,7 +42,7 @@ export function keyLabel(usage: number, layout: LayoutId = prefs.layout): string
   return `0x${usage.toString(16).padStart(2, "0")}`;
 }
 
-/** Funzioni di fabbrica del livello SteelSeries. Il significato di 1 e 2 non è documentato. */
+/** Factory functions of the SteelSeries layer. The meaning of 1 and 2 is undocumented. */
 export function functionLabel(code: number): string {
   switch (code) {
     case 3: return "Brightness –";
@@ -68,7 +68,7 @@ export interface KeyCap {
   y: number;
   w: number;
   h: number;
-  /** Tasto presente sulla tastiera ma non rimappabile dal firmware. */
+  /** Key that exists on the keyboard but cannot be remapped by the firmware. */
   locked?: boolean;
 }
 
@@ -94,7 +94,7 @@ function row(y: number, items: Row, startX = 0): KeyCap[] {
   return caps;
 }
 
-// Righe uguali in ANSI e ISO, in unità di tasto.
+// Rows that are the same in ANSI and ISO, in key units.
 const FUNCTION_ROW = row(0, [0x29, { gap: 1 }, 0x3a, 0x3b, 0x3c, 0x3d, { gap: 0.5 }, 0x3e, 0x3f, 0x40, 0x41,
   { gap: 0.5 }, 0x42, 0x43, 0x44, 0x45, { gap: 0.25 }, 0x46, 0x47, 0x48]);
 const NUMBER_ROW = row(1.25, [0x35, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x2d, 0x2e,
@@ -106,7 +106,7 @@ const LETTERS_TOP = [0x14, 0x1a, 0x08, 0x15, 0x17, 0x1c, 0x18, 0x0c, 0x12, 0x13,
 const LETTERS_HOME = [0x04, 0x16, 0x07, 0x09, 0x0a, 0x0b, 0x0d, 0x0e, 0x0f, 0x33, 0x34];
 const LETTERS_BOTTOM = [0x1d, 0x1b, 0x06, 0x19, 0x05, 0x11, 0x10, 0x36, 0x37, 0x38];
 
-/** TKL ANSI: Invio su una riga, Shift sinistro largo, backslash sopra Invio. */
+/** TKL ANSI: single-row Enter, wide left Shift, backslash above Enter. */
 const TKL_ANSI: KeyCap[] = [
   ...FUNCTION_ROW,
   ...NUMBER_ROW,
@@ -117,7 +117,7 @@ const TKL_ANSI: KeyCap[] = [
   ...BOTTOM_ROW,
 ];
 
-/** TKL ISO: Invio alto due righe, tasto in più accanto allo Shift sinistro. */
+/** TKL ISO: two-row Enter, extra key next to the left Shift. */
 const TKL_ISO: KeyCap[] = [
   ...FUNCTION_ROW,
   ...NUMBER_ROW,
@@ -199,7 +199,7 @@ export const MODIFIERS: { bit: number; label: string }[] = [
   { bit: 0x40, label: "Alt Gr" },
 ];
 
-/** Nomi delle zone LED secondo la posizione HID++ (1 = principale, 2 = logo). */
+/** LED zone names by HID++ location (1 = primary, 2 = logo). */
 export function ledZoneName(location: number): string {
   if (location === 1) return "DPI indicator";
   if (location === 2) return "G logo";

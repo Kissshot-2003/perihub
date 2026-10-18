@@ -1,4 +1,4 @@
-//! Rileva i dispositivi supportati quando vengono collegati o scollegati.
+//! Detects supported devices when they are plugged in or unplugged.
 
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -29,7 +29,7 @@ fn is_keyboard_config_interface(d: &DeviceInfo) -> bool {
         && ((d.usage_page() == 0xFFC0 && d.usage() == 1) || d.usage_page() == 0)
 }
 
-/// Collezione HID++ "lunga" (report 0x11). Su Windows è un percorso separato da quella corta.
+/// "Long" HID++ collection (report 0x11). On Windows it has a separate path from the short one.
 fn is_mouse_hidpp_interface(d: &DeviceInfo) -> bool {
     d.vendor_id() == LOGITECH
         && d.product_id() == G502_HERO
@@ -41,7 +41,7 @@ fn is_mouse_hidpp_interface(d: &DeviceInfo) -> bool {
 pub struct DeviceStatus {
     pub keyboard: Option<KeyboardInfo>,
     pub mouse: Option<MouseInfo>,
-    /// Ultimo errore di connessione, da mostrare all'utente (es. permessi mancanti).
+    /// Last connection error, to show to the user (e.g. missing permissions).
     pub keyboard_error: Option<String>,
     pub mouse_error: Option<String>,
 }
@@ -63,7 +63,7 @@ pub struct Manager {
 }
 
 impl Manager {
-    /// Avvia il rilevamento in background. `listener` viene chiamato a ogni cambiamento.
+    /// Starts detection in the background. `listener` is called on every change.
     pub fn start(keyboard_config: KeyboardConfig, listener: Listener) -> Self {
         let manager = Self {
             slots: Arc::new(Mutex::new(Slots::default())),
@@ -97,7 +97,7 @@ impl Manager {
         }
     }
 
-    /// Un giro di rilevamento. Restituisce `true` se qualcosa è cambiato.
+    /// One detection pass. Returns `true` if anything changed.
     fn poll(&self, api: &mut HidApi) -> bool {
         if let Err(error) = api.refresh_devices() {
             log::warn!("HID enumeration failed: {error}");
@@ -181,7 +181,7 @@ impl Manager {
         self.slots.lock().unwrap().mouse.as_ref().map(|(w, _)| w.clone()).ok_or(Error::NotConnected)
     }
 
-    /// Aggiorna le impostazioni da riapplicare a ogni ricollegamento della tastiera.
+    /// Updates the settings to reapply whenever the keyboard is reconnected.
     pub fn set_keyboard_config(&self, config: KeyboardConfig) {
         *self.keyboard_config.lock().unwrap() = config;
     }

@@ -24,7 +24,7 @@
   let busy = $state<string | null>(null);
   let error = $state<string | null>(null);
   let message = $state<string | null>(null);
-  /** C'è un'anteprima (DPI o LED) attiva sul mouse da annullare. */
+  /** A preview (DPI or LED) is active on the mouse and must be reverted. */
   let previewing = $state(false);
 
   const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -121,7 +121,7 @@
     await revertPreview();
   }
 
-  // Uscendo dalla pagina (altra sezione dell'app) il mouse torna alle impostazioni salvate.
+  // When leaving the page (for another section of the app), the mouse goes back to the saved settings.
   onDestroy(() => {
     if (previewing) api.revertPreview().catch(() => {});
   });

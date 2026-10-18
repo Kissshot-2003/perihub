@@ -1,7 +1,7 @@
-//! SteelSeries Apex 3 TKL (USB 1038:1622), interfaccia di configurazione MI_01 (usage page 0xFFC0).
+//! SteelSeries Apex 3 TKL (USB 1038:1622), configuration interface MI_01 (usage page 0xFFC0).
 //!
-//! Protocollo RGB ricostruito dalla documentazione di OpenRGB; mappa tasti dal progetto
-//! gorkemgun/apex-3-tkl (MIT). Il codice è riscritto da zero.
+//! RGB protocol reconstructed from the OpenRGB documentation; key map from the
+//! gorkemgun/apex-3-tkl project (MIT). The code is written from scratch.
 
 pub mod keys;
 
@@ -25,15 +25,15 @@ const READ_DELAY: Duration = Duration::from_millis(80);
 const WRITE_DELAY: Duration = Duration::from_millis(250);
 const BINDINGS_PER_QUERY: usize = 30;
 
-/// Comandi inviati come report di output (illuminazione, volatili).
+/// Commands sent as output reports (lighting, volatile).
 enum OutputCommand<'a> {
     Colors(&'a [Rgb; ZONES]),
     Rainbow,
     Brightness(u8),
 }
 
-/// Comandi inviati come feature report. Sono gli unici consentiti: in particolare il comando
-/// che riavvia la tastiera nel bootloader non è rappresentabile.
+/// Commands sent as feature reports. These are the only ones allowed: in particular, the command
+/// that reboots the keyboard into its bootloader cannot be expressed.
 enum FeatureCommand<'a> {
     Version,
     Build,
@@ -66,17 +66,17 @@ impl FeatureCommand<'_> {
     }
 }
 
-/// Funzione di un tasto in uno dei due livelli.
+/// Function of a key on one of the two layers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum KeyBinding {
-    /// Emette questo tasto (usage HID).
+    /// Emits this key (HID usage).
     Key { usage: u8 },
-    /// Funzione interna di fabbrica del livello SteelSeries (luminosità, blocco Win…).
+    /// Built-in factory function of the SteelSeries layer (brightness, Win lock…).
     Function { code: u8, param: u8 },
-    /// Nessuna funzione: sul livello SteelSeries vale il tasto normale.
+    /// No function: on the SteelSeries layer the normal key applies.
     None,
-    /// Valore sconosciuto, conservato com'è.
+    /// Unknown value, kept as is.
     Raw { bytes: [u8; 5] },
 }
 
@@ -108,7 +108,7 @@ impl KeyBinding {
     }
 }
 
-/// Mappa completa di un livello: usage sorgente → funzione.
+/// Full map of one layer: source usage → function.
 pub type Layer = BTreeMap<u8, KeyBinding>;
 
 pub struct Apex3Tkl {
@@ -161,7 +161,7 @@ impl Apex3Tkl {
     }
 
     fn read(&self, command: &FeatureCommand) -> Result<[u8; FEATURE_LEN]> {
-        // Le risposte a volte arrivano in ritardo: riproviamo come fa il software ufficiale.
+        // Replies sometimes arrive late: retry, like the official software does.
         let mut last = Error::Timeout;
         for _ in 0..3 {
             match self.send_feature(command, READ_DELAY) {
@@ -193,7 +193,7 @@ impl Apex3Tkl {
         Ok(format!("{version}{build}"))
     }
 
-    // ---- Illuminazione (volatile: si perde scollegando la tastiera) ----
+    // ---- Lighting (volatile: lost when the keyboard is unplugged) ----
 
     pub fn set_colors(&self, colors: &[Rgb; ZONES]) -> Result<()> {
         self.output(OutputCommand::Colors(colors))
@@ -211,7 +211,7 @@ impl Apex3Tkl {
         Ok(self.read(&FeatureCommand::Brightness)?[2].min(MAX_BRIGHTNESS))
     }
 
-    // ---- Mappa dei tasti (salvata nella tastiera) ----
+    // ---- Key map (stored in the keyboard) ----
 
     pub fn read_layer(&self, layer: u8) -> Result<Layer> {
         check_layer(layer)?;
@@ -221,7 +221,7 @@ impl Apex3Tkl {
             let mut attempt = 0;
             loop {
                 let reply = self.read(&FeatureCommand::Bindings { layer, keys: chunk })?;
-                // reply[2] è un byte non inizializzato dal firmware; le voci partono da reply[3].
+                // reply[2] is a byte the firmware leaves uninitialized; entries start at reply[3].
                 let entries = &reply[3..];
                 let ok = chunk.iter().enumerate().all(|(i, &key)| entries[6 * i] == key);
                 if ok {
@@ -241,7 +241,7 @@ impl Apex3Tkl {
         Ok(map)
     }
 
-    /// Imposta un tasto solo in RAM. Va confermato con [`Apex3Tkl::save`].
+    /// Sets a key in RAM only. It must be committed with [`Apex3Tkl::save`].
     fn set_binding_volatile(&self, layer: u8, source: u8, binding: KeyBinding) -> Result<()> {
         check_layer(layer)?;
         validate_binding(layer, source, binding)?;
@@ -252,9 +252,9 @@ impl Apex3Tkl {
         self.write(&FeatureCommand::Save)
     }
 
-    /// Applica le modifiche in modo transazionale: scrive in RAM, rilegge e verifica, e solo
-    /// allora salva nella memoria della tastiera. Se qualcosa non torna, ripristina i valori precedenti.
-    /// Restituisce la mappa letta dopo il salvataggio.
+    /// Applies the changes transactionally: writes to RAM, reads back and verifies, and only
+    /// then saves to the keyboard's memory. If anything does not match, restores the previous values.
+    /// Returns the map read after saving.
     pub fn apply_changes(&self, changes: &[(u8, u8, KeyBinding)]) -> Result<[Layer; 2]> {
         for &(layer, source, binding) in changes {
             check_layer(layer)?;
@@ -269,7 +269,7 @@ impl Apex3Tkl {
                 if current == binding {
                     continue;
                 }
-                // Un valore attuale sconosciuto non saprebbe essere ripristinato: meglio fermarsi.
+                // An unknown current value could not be restored: better to stop here.
                 validate_binding(layer, source, current)?;
                 written.push((layer, source, current));
                 self.set_binding_volatile(layer, source, binding)?;
@@ -303,7 +303,7 @@ fn check_layer(layer: u8) -> Result<()> {
     if LAYERS.contains(&layer) { Ok(()) } else { Err(Error::Invalid(format!("layer {layer}"))) }
 }
 
-/// Valori ammessi in scrittura: un tasto singolo valido, oppure il valore di fabbrica.
+/// Values allowed for writing: a single valid key, or the factory value.
 pub fn validate_binding(layer: u8, source: u8, binding: KeyBinding) -> Result<()> {
     if !keys::is_remappable_source(source) {
         return Err(Error::Invalid(format!("key {source:#04x} cannot be remapped")));

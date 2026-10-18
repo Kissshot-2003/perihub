@@ -1,5 +1,5 @@
-//! Un thread per dispositivo: tutte le richieste passano da qui, così l'animazione delle luci
-//! e l'interfaccia non si accavallano mai sullo stesso collegamento HID.
+//! One thread per device: every request goes through here, so the lighting animation
+//! and the interface never overlap on the same HID connection.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,7 +10,7 @@ use std::time::Duration;
 use crate::error::{Error, Result};
 
 pub trait DeviceTask: Send + 'static {
-    /// Lavoro periodico (es. un fotogramma dell'effetto luci). Restituisce fra quanto richiamarlo.
+    /// Periodic work (e.g. one frame of the lighting effect). Returns how long until it runs again.
     fn tick(&mut self) -> Result<Duration>;
 }
 
@@ -62,7 +62,7 @@ impl<T: DeviceTask> Worker<T> {
         self.alive.load(Ordering::SeqCst)
     }
 
-    /// Esegue `f` nel thread del dispositivo e ne attende il risultato.
+    /// Runs `f` on the device's thread and waits for its result.
     pub fn call<R: Send + 'static>(&self, f: impl FnOnce(&mut T) -> Result<R> + Send + 'static) -> Result<R> {
         let (reply_tx, reply_rx) = mpsc::channel();
         self.tx

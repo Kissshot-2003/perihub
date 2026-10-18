@@ -7,7 +7,7 @@
 
   const UNIT = 46;
   const STEELSERIES_KEY = 0xf0;
-  // Funzioni di fabbrica del livello SteelSeries (uguali a perihub-core/src/apex/keys.rs).
+  // Factory functions of the SteelSeries layer (same as perihub-core/src/apex/keys.rs).
   const FACTORY_FUNCTIONS: Record<number, KeyBinding> = {
     0x42: { type: "function", code: 1, param: 0 },
     0x43: { type: "function", code: 2, param: 1 },
@@ -20,7 +20,7 @@
   let keymap = $state<Keymap | null>(null);
   let layer = $state<0 | 1>(0);
   let selected = $state<number | null>(null);
-  /** Modifiche non ancora salvate, per livello: usage → nuova funzione. */
+  /** Unsaved changes, per layer: usage → new function. */
   let drafts = $state<[Record<number, KeyBinding>, Record<number, KeyBinding>]>([{}, {}]);
   let busy = $state<string | null>("Reading the key mapping…");
   let error = $state<string | null>(null);

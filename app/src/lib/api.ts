@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-// ---- Tipi condivisi con il backend Rust (stessi nomi dei campi serde) ----
+// ---- Types shared with the Rust backend (same field names as serde) ----
 
 export type Rgb = string; // "#rrggbb"
 
@@ -130,7 +130,7 @@ export interface KeyChange {
   binding: KeyBinding;
 }
 
-// ---- Comandi ----
+// ---- Commands ----
 
 export const api = {
   status: () => invoke<DeviceStatus>("get_status"),
@@ -162,14 +162,14 @@ export const api = {
   quit: () => invoke<void>("app_quit"),
 };
 
-/** Esegue `fn` solo dopo `ms` millisecondi senza nuove chiamate (per cursori e selettori colore). */
+/** Runs `fn` only after `ms` milliseconds without new calls (for sliders and color pickers). */
 export function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: number) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const call = (...args: A) => {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), ms);
   };
-  /** Annulla la chiamata in attesa (es. quando il componente viene chiuso). */
+  /** Cancels the pending call (e.g. when the component is destroyed). */
   call.cancel = () => clearTimeout(timer);
   return call;
 }

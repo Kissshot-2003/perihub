@@ -1,17 +1,17 @@
-//! Tasti della SteelSeries Apex 3 TKL (usage HID della pagina tastiera).
+//! Keys of the SteelSeries Apex 3 TKL (HID usages from the keyboard page).
 
 use serde::Serialize;
 
-/// Tasto SteelSeries (selettore del secondo livello): non si può rimappare.
+/// SteelSeries key (selects the second layer): it cannot be remapped.
 pub const STEELSERIES_KEY: u8 = 0xF0;
 
-/// Gli unici usage che hanno uno slot nella mappa del firmware 3.0.4 (letti dal dispositivo:
-/// 114 slot). Gli altri usage leggono memoria fuori dalla tabella e non vanno mai scritti.
+/// The only usages that have a slot in the firmware 3.0.4 key map (read from the device:
+/// 114 slots). Other usages read memory outside the table and must never be written.
 pub fn is_mappable_slot(usage: u8) -> bool {
     matches!(usage, 0x04..=0x64 | 0x85 | 0x87..=0x8B | 0x90 | 0x91 | 0xE0..=0xE7 | STEELSERIES_KEY)
 }
 
-/// Tasti che si possono rimappare (tutti gli slot tranne il tasto SteelSeries).
+/// Keys that can be remapped (every slot except the SteelSeries key).
 pub fn is_remappable_source(usage: u8) -> bool {
     usage != STEELSERIES_KEY && is_mappable_slot(usage)
 }
@@ -22,7 +22,7 @@ pub struct KeyInfo {
     pub name: &'static str,
 }
 
-/// Tasti che il firmware può emettere come destinazione di una rimappatura.
+/// Keys the firmware can emit as the target of a remap.
 pub const TARGET_KEYS: &[KeyInfo] = &[
     k(0x04, "A"), k(0x05, "B"), k(0x06, "C"), k(0x07, "D"), k(0x08, "E"), k(0x09, "F"),
     k(0x0A, "G"), k(0x0B, "H"), k(0x0C, "I"), k(0x0D, "J"), k(0x0E, "K"), k(0x0F, "L"),
@@ -61,7 +61,7 @@ pub fn is_valid_target(usage: u8) -> bool {
     TARGET_KEYS.iter().any(|key| key.usage == usage)
 }
 
-/// Funzioni di fabbrica del livello SteelSeries (tasto SteelSeries + tasto).
+/// Factory functions of the SteelSeries layer (SteelSeries key + key).
 pub fn factory_function(source: u8) -> Option<[u8; 5]> {
     Some(match source {
         0x42 => [0x62, 0x01, 0x00, 0x00, 0x00],

@@ -41,7 +41,7 @@
     if (settings.shift_dpi_index >= n) settings.shift_dpi_index = 0;
   }
 
-  // Scala logaritmica per il cursore: più precisione ai DPI bassi, quelli usati davvero.
+  // Logarithmic slider scale: more precision at low DPI, the values people actually use.
   const toSlider = (dpi: number) => Math.log(dpi / caps.min) / Math.log(caps.max / caps.min);
   const fromSlider = (t: number) => caps.min * Math.pow(caps.max / caps.min, t);
   onDestroy(() => preview.cancel());

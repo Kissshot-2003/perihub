@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// Colore RGB a 8 bit, serializzato come stringa `#rrggbb`.
+/// 8-bit RGB color, serialized as a `#rrggbb` string.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Rgb {
     pub r: u8,
@@ -37,7 +37,7 @@ impl Rgb {
         format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b)
     }
 
-    /// Moltiplica i canali per `factor` (0.0–1.0).
+    /// Multiplies the channels by `factor` (0.0–1.0).
     pub fn scale(self, factor: f32) -> Self {
         let f = factor.clamp(0.0, 1.0);
         let c = |v: u8| (v as f32 * f).round() as u8;
@@ -50,7 +50,7 @@ impl Rgb {
         Self::new(c(self.r, other.r), c(self.g, other.g), c(self.b, other.b))
     }
 
-    /// `hue` in giri (0.0–1.0), `sat` e `val` in 0.0–1.0.
+    /// `hue` in turns (0.0–1.0), `sat` and `val` in 0.0–1.0.
     pub fn from_hsv(hue: f32, sat: f32, val: f32) -> Self {
         let h = hue.rem_euclid(1.0) * 6.0;
         let c = val * sat;

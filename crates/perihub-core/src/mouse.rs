@@ -1,4 +1,4 @@
-//! Stato e operazioni del mouse Logitech, eseguite nel thread dedicato al dispositivo.
+//! Logitech mouse state and operations, run on the device's dedicated thread.
 
 use std::time::Duration;
 
@@ -10,8 +10,8 @@ use crate::hidpp::profile::{self, LedEffect, ProfileSettings};
 use crate::hidpp::{DpiCapabilities, FirmwareEntity, HidppDevice, LedZone, OnboardInfo, ROM_SECTOR_BASE};
 use crate::worker::DeviceTask;
 
-/// Formati di profilo verificati byte per byte su un dispositivo reale. Gli altri si possono
-/// leggere ma non scrivere.
+/// Profile formats verified byte by byte on a real device. Others can be read
+/// but not written.
 const WRITABLE_PROFILE_FORMATS: &[u8] = &[2];
 const ONBOARD_MODE: u8 = 1;
 
@@ -52,7 +52,7 @@ impl MouseTask {
         if onboard.memory_model != 1 || onboard.macro_format != 1 {
             return Err(Error::Protocol("onboard profile memory uses an unknown format".into()));
         }
-        // Se un altro programma ha lasciato il mouse in modalità software, torniamo ai profili in memoria.
+        // If another program left the mouse in host mode, switch back to the onboard profiles.
         if dev.onboard_mode()? != ONBOARD_MODE {
             log::info!("mouse in host mode: switching to onboard profiles");
             dev.set_onboard_mode(ONBOARD_MODE)?;
@@ -117,7 +117,7 @@ impl MouseTask {
         })
     }
 
-    /// Settore del profilo utente; se non è mai stato scritto (CRC non valido) vale quello di fabbrica.
+    /// User profile sector; if it was never written (invalid CRC), the factory one applies.
     fn read_profile_sector(&mut self, number: u8) -> Result<Vec<u8>> {
         let sector = self.dev.read_sector(number as u16, self.sector_size())?;
         if profile::crc_is_valid(&sector) {
@@ -156,8 +156,8 @@ impl MouseTask {
         Ok(())
     }
 
-    /// Ricarica il profilo attivo, così le modifiche hanno effetto subito. Riselezionare lo stesso
-    /// profilo non basta (verificato sul G502 HERO): bisogna passare a un altro e tornare indietro.
+    /// Reloads the active profile so changes take effect immediately. Reselecting the same
+    /// profile is not enough (verified on the G502 HERO): you have to switch to another one and back.
     fn reload_if_active(&mut self, number: u8) -> Result<()> {
         if self.dev.active_profile()? == number {
             self.reload_active()?;
@@ -173,7 +173,7 @@ impl MouseTask {
         } else {
             vec![true; self.profile_count() as usize]
         };
-        // Meglio passare per un profilo abilitato: il comportamento con quelli disattivati non è verificato.
+        // Better to go through an enabled profile: the behavior with disabled ones is not verified.
         let others = || (1..=self.profile_count()).filter(|&n| n != active);
         let other = others()
             .find(|&n| enabled[n as usize - 1])
@@ -183,12 +183,12 @@ impl MouseTask {
         self.dev.set_active_profile(active)
     }
 
-    /// Lettura grezza di un settore (diagnostica).
+    /// Raw read of a sector (diagnostics).
     pub fn read_raw_sector(&mut self, sector: u16) -> Result<Vec<u8>> {
         self.dev.read_sector(sector, self.sector_size())
     }
 
-    /// Annulla le anteprime di DPI e LED tornando alle impostazioni salvate.
+    /// Cancels DPI and LED previews by going back to the saved settings.
     pub fn revert_preview(&mut self) -> Result<()> {
         self.reload_active()
     }
@@ -242,7 +242,7 @@ impl MouseTask {
         self.dev.set_active_dpi_index(index)
     }
 
-    /// Anteprima dei DPI (non salvata: il mouse torna al profilo al prossimo cambio livello).
+    /// DPI preview (not saved: the mouse goes back to the profile at the next level change).
     pub fn preview_dpi(&mut self, dpi: u16) -> Result<()> {
         let caps = &self.info.dpi;
         if dpi < caps.min || dpi > caps.max {

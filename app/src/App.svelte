@@ -8,7 +8,7 @@
   type Page = "keyboard" | "mouse" | "settings";
   const PAGES: Page[] = ["keyboard", "mouse", "settings"];
 
-  // Navigazione nell'indirizzo (#pagina oppure #pagina:scheda), così una pagina si può aprire direttamente.
+  // Navigation through the URL hash (#page or #page:tab), so a page can be opened directly.
   function fromHash(): [Page, string | undefined] {
     const [p, tab] = location.hash.slice(1).split(":");
     return [PAGES.includes(p as Page) ? (p as Page) : "keyboard", tab || undefined];

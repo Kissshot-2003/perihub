@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Pulsante a doppio clic per le azioni distruttive, senza finestre di dialogo.
+  // Two-click button for destructive actions: the second click confirms, no dialog box.
   import type { Snippet } from "svelte";
 
   interface Props {

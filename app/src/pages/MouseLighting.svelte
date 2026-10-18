@@ -13,7 +13,7 @@
   let error = $state<string | null>(null);
 
   type Mode = LedEffect["mode"];
-  // Codici HID++ degli effetti: 0 spento, 1 fisso, 10 respiro, 3 ciclo colori.
+  // HID++ effect codes: 0 off, 1 fixed, 10 breathing, 3 color cycle.
   const MODES: { mode: Exclude<Mode, "raw">; id: number; label: string }[] = [
     { mode: "off", id: 0, label: "Off" },
     { mode: "fixed", id: 1, label: "Fixed" },

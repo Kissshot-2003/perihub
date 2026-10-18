@@ -1,4 +1,4 @@
-// Preferenze dell'interfaccia salvate nel browser integrato (solo comodità: se mancano, si usano i valori predefiniti).
+// Interface preferences stored in the embedded browser (convenience only: if missing, defaults are used).
 
 export type LayoutId = "ansi-us" | "iso-uk" | "iso-it";
 
@@ -15,7 +15,7 @@ function initialLayout(): LayoutId {
     const saved = localStorage.getItem(LAYOUT_KEY);
     if (LAYOUTS.some((l) => l.id === saved)) return saved as LayoutId;
   } catch {
-    /* archiviazione non disponibile */
+    /* storage unavailable */
   }
   const lang = navigator.language.toLowerCase();
   if (lang.startsWith("it")) return "iso-it";
@@ -30,6 +30,6 @@ export function setLayout(layout: LayoutId) {
   try {
     localStorage.setItem(LAYOUT_KEY, layout);
   } catch {
-    /* archiviazione non disponibile */
+    /* storage unavailable */
   }
 }
