@@ -54,6 +54,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 | Polling rate | 125, 250, 500, 1000 Hz | Mouse memory |
 | Buttons | 11 buttons plus the G-Shift layer: mouse clicks, keys with Ctrl/Shift/Alt/Win/Alt Gr, media keys, DPI up/down/cycle/sniper, profile switching | Mouse memory |
 | Lighting | Logo and DPI indicator: off, fixed color with brightness, breathing, color cycle (breathing and color cycle stay in sync on both zones), with live preview | Mouse memory |
+| Macros | Recorded from the keyboard or built step by step: keys, mouse clicks, media keys, scrolling, pauses. Run once, repeat while the button is held, or one part on press and another on release | **Mouse memory**: works without PeriHub, on any PC |
 
 ### App profiles
 
@@ -250,7 +251,7 @@ The UI is in English. More languages are on the roadmap.
 - **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
 - **App profiles** detect the app in focus on Windows and on Hyprland only. They switch lighting and mouse profiles, not key mappings, because changing those writes the keyboard's memory.
 - **Not yet available**:
-  - software macros;
+  - software macros: the mouse runs its own macros, but it cannot open apps or start and stop a macro with two presses, as G HUB's software macros can;
   - GameSense compatibility.
 - **Out of scope**: SteelSeries Sonar and Moments, G HUB Lua scripts.
 

@@ -50,7 +50,8 @@
         <strong>{mouseButtonName(info.product_id, i)}</strong>
         <span class="small muted">Button {i + 1}</span>
       </div>
-      <ButtonActionEditor {action} {keys} allowDisabledHint={layer === "gshift"} onchange={(a) => update(i, a)} />
+      <ButtonActionEditor {action} {keys} name={mouseButtonName(info.product_id, i)} allowDisabledHint={layer === "gshift"}
+        onchange={(a) => update(i, a)} />
     {/each}
   </div>
 </div>

@@ -96,11 +96,28 @@ export type SpecialFunction =
   | "profile_cycle"
   | "g_shift";
 
+/** One command of a macro. `key` is 0 when only modifiers are pressed; mouse `buttons` is a bit mask. */
 export type MacroStep =
   | { type: "key_down"; modifiers: number; key: number }
   | { type: "key_up"; modifiers: number; key: number }
+  | { type: "mouse_down"; buttons: number }
+  | { type: "mouse_up"; buttons: number }
+  | { type: "consumer_down"; usage: number }
+  | { type: "consumer_up"; usage: number }
+  /** Wheel notches: positive scrolls up. */
+  | { type: "wheel"; amount: number }
   | { type: "delay"; ms: number }
   | { type: "noop" };
+
+/** once: when pressed. sequence: `press` when pressed, `release` when released. while_held: again
+ * and again while held. forever: until the profile changes (read only, PeriHub does not write it). */
+export type MacroKind = "once" | "sequence" | "while_held" | "forever";
+
+export interface Macro {
+  kind: MacroKind;
+  press: MacroStep[];
+  release: MacroStep[];
+}
 
 export type ButtonAction =
   | { type: "mouse"; button: number }
@@ -108,8 +125,9 @@ export type ButtonAction =
   | { type: "consumer"; usage: number }
   | { type: "special"; function: SpecialFunction }
   | { type: "disabled" }
-  /** Macro in the mouse's memory; `steps` is null if PeriHub cannot read it yet. */
-  | { type: "macro"; sector: number; offset: number; steps: MacroStep[] | null }
+  /** Macro in the mouse's memory; `content` is null if PeriHub cannot read it. A new or changed
+   * macro gets its place in memory when the profile is saved (sector 0 = not placed yet). */
+  | { type: "macro"; sector: number; offset: number; content: Macro | null }
   | { type: "raw"; bytes: number[] };
 
 export type LedEffect =

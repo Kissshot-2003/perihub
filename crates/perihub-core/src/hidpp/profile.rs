@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::macros::MacroStep;
+use super::macros::Macro;
 use crate::color::Rgb;
 use crate::error::{Error, Result};
 
@@ -110,14 +110,15 @@ pub enum ButtonAction {
         function: SpecialFunction,
     },
     Disabled,
-    /// Macro in the mouse's memory, starting at `offset` in `sector`. `steps` is filled in when the
-    /// mouse is read, and stays `None` if the macro uses commands PeriHub cannot read yet.
-    /// Saving keeps the binding as it is: steps are never written back.
+    /// Macro in the mouse's memory, starting at `offset` in `sector`. `content` is filled in when
+    /// the mouse is read, and stays `None` if the macro uses commands PeriHub cannot read yet: such a
+    /// macro is kept as it is. When saving, a macro whose content changed is written to free memory
+    /// and the address is updated (see `MouseTask::save_profile`).
     Macro {
         sector: u8,
-        offset: u8,
+        offset: u16,
         #[serde(default)]
-        steps: Option<Vec<MacroStep>>,
+        content: Option<Macro>,
     },
     /// Unsupported type: kept byte for byte.
     Raw {
@@ -142,7 +143,10 @@ impl ButtonAction {
                 }
             }
             [0xFF, 0xFF, 0xFF, 0xFF] => return Self::Disabled,
-            [0x00, sector, 0x00, offset] => return Self::Macro { sector, offset, steps: None },
+            // [memory 0, sector, offset]. Sector 0 is the profile directory: all zeros is not a macro.
+            [0x00, sector, hi, lo] if sector != 0 => {
+                return Self::Macro { sector, offset: u16::from_be_bytes([hi, lo]), content: None };
+            }
             _ => {}
         }
         Self::Raw { bytes: b }
@@ -164,7 +168,10 @@ impl ButtonAction {
             }
             Self::Special { function } => [0x90, function.code(), 0xFF, 0xFF],
             Self::Disabled => [0xFF; 4],
-            Self::Macro { sector, offset, .. } => [0x00, sector, 0x00, offset],
+            Self::Macro { sector, offset, .. } => {
+                let [hi, lo] = offset.to_be_bytes();
+                [0x00, sector, hi, lo]
+            }
             Self::Raw { bytes } => bytes,
         })
     }
@@ -304,7 +311,7 @@ impl ProfileSettings {
     }
 
     /// (sector, offset) of every macro bound to a button, G-Shift layer included.
-    pub fn macro_addresses(&self) -> Vec<(u8, u8)> {
+    pub fn macro_addresses(&self) -> Vec<(u8, u16)> {
         self.buttons
             .iter()
             .chain(&self.gshift_buttons)
@@ -366,6 +373,18 @@ pub fn parse_directory(sector: &[u8], profile_count: usize) -> Vec<bool> {
         }
     }
     enabled
+}
+
+/// Sectors the directory (sector 0x0000) lists as profiles: macros must never be written there.
+pub fn directory_sectors(sector: &[u8], profile_count: usize) -> Vec<u16> {
+    sector
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .take(profile_count)
+        .map(|entry| u16::from_be_bytes([entry[0], entry[1]]))
+        .take_while(|&address| address != 0xFFFF)
+        .collect()
 }
 
 pub fn build_directory(enabled: &[bool], sector_size: usize) -> Vec<u8> {

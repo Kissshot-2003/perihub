@@ -383,9 +383,9 @@ impl HidppDevice {
         Ok(data)
     }
 
-    /// Writes a user sector (directory or profile). Factory sectors cannot be written.
+    /// Writes a user sector (directory, profile or macros). Factory sectors cannot be written.
     pub fn write_sector(&mut self, sector: u16, data: &[u8], info: &OnboardInfo) -> Result<()> {
-        if sector > info.profile_count as u16 {
+        if sector >= info.sector_count as u16 {
             return Err(Error::Invalid(format!("sector {sector:#06x} is not writable")));
         }
         if data.len() != info.sector_size as usize || !data.len().is_multiple_of(16) {

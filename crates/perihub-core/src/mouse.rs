@@ -1,13 +1,13 @@
 //! Logitech mouse state and operations, run on the device's dedicated thread.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use serde::Serialize;
 
 use crate::config::write_backup;
 use crate::error::{Error, Result};
-use crate::hidpp::macros;
+use crate::hidpp::macros::{self, Macro, Packer};
 use crate::hidpp::models::MouseModel;
 use crate::hidpp::profile::{self, ButtonAction, LedEffect, ProfileSettings};
 use crate::hidpp::{DpiCapabilities, FirmwareEntity, HidppDevice, LedZone, OnboardInfo, ROM_SECTOR_BASE};
@@ -152,31 +152,117 @@ impl MouseTask {
         self.read_factory_sector(number)
     }
 
-    /// Fills in the steps of the macros bound to the profile's buttons. Macros PeriHub cannot read
-    /// stay without steps; errors talking to the mouse are returned. `cache` keeps the sectors
-    /// already read, since profiles can share macro sectors.
+    /// Reads a sector through `cache`, since profiles can share macro sectors.
+    fn read_cached(&mut self, cache: &mut HashMap<u16, Vec<u8>>, id: u16) -> Result<Vec<u8>> {
+        if let Some(data) = cache.get(&id) {
+            return Ok(data.clone());
+        }
+        let data = self.dev.read_sector(id, self.sector_size())?;
+        cache.insert(id, data.clone());
+        Ok(data)
+    }
+
+    /// Reads the macro at `sector`/`offset`. `None` if PeriHub cannot read it; errors talking to
+    /// the mouse are returned.
+    fn read_macro(&mut self, cache: &mut HashMap<u16, Vec<u8>>, sector: u8, offset: u16) -> Result<Option<Macro>> {
+        match macros::parse(|id| self.read_cached(cache, id), sector, offset) {
+            Ok(content) => Ok(Some(content)),
+            Err(e @ (Error::Hid(_) | Error::Timeout)) => Err(e),
+            Err(e) => {
+                log::warn!("macro at sector {sector:#04x} offset {offset:#06x}: {e}");
+                Ok(None)
+            }
+        }
+    }
+
+    /// Sectors used by the macro at `sector`/`offset`. If its commands cannot be followed, at
+    /// least the sector it starts in.
+    fn macro_sectors(&mut self, cache: &mut HashMap<u16, Vec<u8>>, sector: u8, offset: u16) -> Result<Vec<u8>> {
+        match macros::sectors_used(|id| self.read_cached(cache, id), sector, offset) {
+            Ok(sectors) => Ok(sectors),
+            Err(e @ (Error::Hid(_) | Error::Timeout)) => Err(e),
+            Err(_) => Ok(vec![sector]),
+        }
+    }
+
+    /// Fills in the content of the macros bound to the profile's buttons.
     fn read_macros(&mut self, settings: &mut ProfileSettings, cache: &mut HashMap<u16, Vec<u8>>) -> Result<()> {
-        let size = self.sector_size();
         for action in settings.buttons.iter_mut().chain(settings.gshift_buttons.iter_mut()) {
-            let ButtonAction::Macro { sector, offset, steps } = action else { continue };
-            let read = |id: u16| -> Result<Vec<u8>> {
-                if let Some(data) = cache.get(&id) {
-                    return Ok(data.clone());
-                }
-                let data = self.dev.read_sector(id, size)?;
-                cache.insert(id, data.clone());
-                Ok(data)
-            };
-            *steps = match macros::parse(read, *sector, *offset) {
-                Ok(parsed) => Some(parsed),
-                Err(e @ (Error::Hid(_) | Error::Timeout)) => return Err(e),
-                Err(e) => {
-                    log::warn!("macro at sector {sector:#04x} offset {offset:#04x}: {e}");
-                    None
-                }
-            };
+            if let ButtonAction::Macro { sector, offset, content } = action {
+                *content = self.read_macro(cache, *sector, *offset)?;
+            }
         }
         Ok(())
+    }
+
+    /// Gives every macro of the profile being saved an address. A macro already in the mouse with the same
+    /// content keeps its place; the others are packed into sectors that no profile uses, returned
+    /// to be written before the profile. Sectors in use, including those of the macros this save
+    /// replaces, are never overwritten: if writing stops halfway, every profile still points to
+    /// intact macros. Replaced macros free their sectors for the next save.
+    fn place_macros(&mut self, settings: &mut ProfileSettings) -> Result<Vec<(u8, Vec<u8>)>> {
+        let buttons = self.info.onboard.button_count as usize;
+        let mut cache = HashMap::new();
+        let mut used: HashSet<u8> = (0..=self.profile_count()).collect();
+        let directory = self.dev.read_sector(0, self.sector_size())?;
+        if profile::crc_is_valid(&directory) {
+            let listed = profile::directory_sectors(&directory, self.profile_count() as usize);
+            used.extend(listed.into_iter().filter_map(|s| u8::try_from(s).ok()));
+        }
+        // Macros in the mouse now.
+        let mut existing = Vec::new();
+        for n in 1..=self.profile_count() {
+            let sector = self.read_profile_sector(n)?;
+            for (s, o) in ProfileSettings::parse(&sector, buttons)?.macro_addresses() {
+                used.extend(self.macro_sectors(&mut cache, s, o)?);
+                if !existing.iter().any(|(address, _)| *address == (s, o)) {
+                    let content = self.read_macro(&mut cache, s, o)?;
+                    existing.push(((s, o), content));
+                }
+            }
+        }
+        // Macros of this profile that are new or changed.
+        let mut new = Vec::new();
+        for action in settings.buttons.iter_mut().chain(settings.gshift_buttons.iter_mut()) {
+            let ButtonAction::Macro { sector, offset, content } = action else { continue };
+            let current = existing.iter().find(|(address, _)| *address == (*sector, *offset));
+            match (content, current) {
+                // Unchanged, or one PeriHub cannot read (it is kept byte for byte).
+                (Some(content), Some((_, Some(old)))) if content == old => {}
+                (None, Some(_)) => {}
+                (None, None) => {
+                    return Err(Error::Invalid("a button points to a macro that is not in the mouse".into()));
+                }
+                (Some(content), _) => {
+                    content.validate()?;
+                    new.push(action);
+                }
+            }
+        }
+        if new.is_empty() {
+            return Ok(Vec::new());
+        }
+        let free = (self.profile_count() + 1..self.info.onboard.sector_count).filter(|s| !used.contains(s));
+        let mut packer = Packer::new(free, self.sector_size());
+        let mut placed: Vec<(Macro, (u8, u16))> = Vec::new();
+        for action in new {
+            let ButtonAction::Macro { sector, offset, content: Some(content) } = action else { unreachable!() };
+            // The same macro on two buttons is written once.
+            let address = match placed.iter().find(|(m, _)| m == content) {
+                Some((_, address)) => *address,
+                None => {
+                    let address = packer.place(content)?;
+                    placed.push((content.clone(), address));
+                    address
+                }
+            };
+            (*sector, *offset) = address;
+        }
+        let mut sectors = packer.finish();
+        for (_, data) in &mut sectors {
+            profile::write_crc(data);
+        }
+        Ok(sectors)
     }
 
     fn read_factory_sector(&mut self, number: u8) -> Result<Vec<u8>> {
@@ -188,7 +274,7 @@ impl MouseTask {
 
     fn backup_all(&mut self, label: &str) -> Result<()> {
         let mut files = Vec::new();
-        for sector in 0..=self.profile_count() as u16 {
+        for sector in 0..self.info.onboard.sector_count as u16 {
             files.push((format!("sector_{sector:04x}.bin"), self.dev.read_sector(sector, self.sector_size())?));
         }
         let refs: Vec<(&str, &[u8])> = files.iter().map(|(n, d)| (n.as_str(), d.as_slice())).collect();
@@ -254,15 +340,15 @@ impl MouseTask {
         if caps.step > 0 && settings.dpi_levels.iter().any(|d| !(d - caps.min).is_multiple_of(caps.step)) {
             return Err(Error::Invalid(format!("DPI values must be multiples of {}", caps.step)));
         }
+        let mut settings = settings.clone();
+        let macro_sectors = self.place_macros(&mut settings)?;
         let mut sector = self.read_profile_sector(number)?;
-        // Writing macros is not supported yet: a button can keep a macro the profile already has
-        // (or take it from another button), but cannot point to new memory.
-        let known = ProfileSettings::parse(&sector, self.info.onboard.button_count as usize)?.macro_addresses();
-        if settings.macro_addresses().iter().any(|address| !known.contains(address)) {
-            return Err(Error::Invalid("new macros cannot be saved yet".into()));
-        }
         settings.apply(&mut sector)?;
         self.backup_all(&format!("profile{number}"))?;
+        // Macros first: if writing stops halfway, the profile still points to the old ones.
+        for (id, data) in &macro_sectors {
+            self.write_verified(*id as u16, data)?;
+        }
         self.write_verified(number as u16, &sector)?;
         self.reload_if_active(number)?;
         self.state()

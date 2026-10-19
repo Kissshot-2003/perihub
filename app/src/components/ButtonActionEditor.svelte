@@ -1,21 +1,29 @@
 <script lang="ts">
-  import type { ButtonAction, KeyInfo } from "../lib/api";
-  import { CONSUMER_KEYS, keyLabel, macroSummary, MODIFIERS, MOUSE_CLICKS, SPECIAL_FUNCTIONS } from "../lib/keys";
+  import type { ButtonAction, KeyInfo, Macro } from "../lib/api";
+  import { CONSUMER_KEYS, keyLabel, MODIFIERS, MOUSE_CLICKS, SPECIAL_FUNCTIONS } from "../lib/keys";
+  import { macroSummary } from "../lib/macros";
+  import MacroEditor from "./MacroEditor.svelte";
 
   interface Props {
     action: ButtonAction;
     keys: KeyInfo[];
+    /** Name of the button, for the macro editor. */
+    name: string;
     allowDisabledHint?: boolean;
     onchange: (action: ButtonAction) => void;
   }
 
-  let { action, keys, allowDisabledHint = false, onchange }: Props = $props();
+  let { action, keys, name, allowDisabledHint = false, onchange }: Props = $props();
+  /** Macro open in the editor. */
+  let editing = $state<Macro | null>(null);
+  let kindSelect: HTMLSelectElement;
 
   type Kind = ButtonAction["type"];
   const KINDS: { kind: Kind; label: string }[] = [
     { kind: "mouse", label: "Mouse click" },
     { kind: "key", label: "Keyboard key" },
     { kind: "consumer", label: "Media key" },
+    { kind: "macro", label: "Macro" },
     { kind: "special", label: "Mouse function" },
     { kind: "disabled", label: "Disabled" },
   ];
@@ -25,6 +33,7 @@
       case "mouse": return onchange({ type: "mouse", button: 1 });
       case "key": return onchange({ type: "key", modifiers: 0, key: 0x04 });
       case "consumer": return onchange({ type: "consumer", usage: CONSUMER_KEYS[0].usage });
+      case "macro": editing = { kind: "once", press: [], release: [] }; return;
       case "special": return onchange({ type: "special", function: "dpi_cycle" });
       case "disabled": return onchange({ type: "disabled" });
     }
@@ -35,12 +44,23 @@
     onchange({ ...action, modifiers: on ? action.modifiers | bit : action.modifiers & ~bit });
   }
 
+  function saveMacro(content: Macro) {
+    // A changed macro keeps its old address: saving the profile writes it to free memory.
+    const at = action.type === "macro" ? { sector: action.sector, offset: action.offset } : { sector: 0, offset: 0 };
+    onchange({ type: "macro", ...at, content });
+    editing = null;
+  }
+
+  function cancelMacro() {
+    editing = null;
+    kindSelect.value = action.type;
+  }
+
   const value = (e: Event) => (e.target as HTMLSelectElement).value;
 </script>
 
 <div class="row wrap editor">
-  <select value={action.type} onchange={(e) => changeKind(value(e) as Kind)}>
-    {#if action.type === "macro"}<option value="macro" disabled>Macro</option>{/if}
+  <select bind:this={kindSelect} value={action.type} onchange={(e) => changeKind(value(e) as Kind)}>
     {#if action.type === "raw"}<option value="raw" disabled>Custom value</option>{/if}
     {#each KINDS as k (k.kind)}
       <option value={k.kind}>{k.label}</option>
@@ -83,14 +103,22 @@
       {/each}
     </select>
   {:else if action.type === "macro"}
-    <span class="small">{macroSummary(action.steps)}</span>
-    <span class="muted small">Stored in the mouse: pick a type to replace it.</span>
+    <span class="small summary">{macroSummary(action.content)}</span>
+    {#if action.content}
+      <button onclick={() => action.type === "macro" && (editing = $state.snapshot(action.content))}>Edit…</button>
+    {:else}
+      <span class="muted small">Set by another program: pick a type to replace it.</span>
+    {/if}
   {:else if action.type === "raw"}
     <span class="muted small">Set by another program: pick a type to replace it.</span>
   {:else if action.type === "disabled" && allowDisabledHint}
     <span class="muted small">The button does nothing while G-Shift is held.</span>
   {/if}
 </div>
+
+{#if editing}
+  <MacroEditor content={editing} {keys} button={name} onsave={saveMacro} oncancel={cancelMacro} />
+{/if}
 
 <style>
   .editor {
@@ -99,5 +127,9 @@
 
   .mod {
     gap: 4px;
+  }
+
+  .summary {
+    max-width: 420px;
   }
 </style>

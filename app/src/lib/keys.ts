@@ -1,4 +1,4 @@
-import type { KeyBinding, MacroStep, SpecialFunction } from "./api";
+import type { KeyBinding, SpecialFunction } from "./api";
 import { prefs, type LayoutId } from "./prefs.svelte";
 
 /** Key names that do not depend on the layout (HID usage → keycap label). */
@@ -240,18 +240,6 @@ export const MODIFIERS: { bit: number; label: string }[] = [
   { bit: 0x08, label: "Win" },
   { bit: 0x40, label: "Alt Gr" },
 ];
-
-/** Keys a macro presses, in order, and its total delay, e.g. "Ctrl+C V · 120 ms". */
-export function macroSummary(steps: MacroStep[] | null): string {
-  if (!steps) return "Macro that PeriHub cannot read yet";
-  const keys = steps.flatMap((s) => {
-    if (s.type !== "key_down") return [];
-    const mods = MODIFIERS.filter((m) => s.modifiers & m.bit).map((m) => m.label);
-    return [[...mods, keyLabel(s.key)].join("+")];
-  });
-  const ms = steps.reduce((sum, s) => sum + (s.type === "delay" ? s.ms : 0), 0);
-  return `${keys.join(" ") || "No keys"} · ${ms} ms`;
-}
 
 /** LED zone names by HID++ location (1 = primary, 2 = logo). */
 export function ledZoneName(productId: number, location: number): string {
