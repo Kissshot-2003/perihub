@@ -27,6 +27,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 - [Download and install](#download-and-install)
 - [Usage](#usage)
 - [Safety](#safety)
+- [Performance](#performance)
 - [FAQ](#faq)
 - [Known limitations](#known-limitations)
 - [Building from source](#building-from-source)
@@ -230,6 +231,30 @@ PeriHub does not modify firmware. It uses the same configuration commands as the
   - Windows: `%APPDATA%\perihub\backups\`
 
 To report a security issue, see [SECURITY.md](SECURITY.md).
+
+## Performance
+
+PeriHub is a single small program: it installs no background services or drivers and needs no account. Settings stored in the devices' memory (key mapping, mouse profiles, DPI, buttons, macros) keep working when it is closed.
+
+Measured on 19 October 2026 with PeriHub 0.3.0 (AppImage) on CachyOS Linux, AMD Ryzen 7 9700X, with the Apex 3 TKL and the G502 HERO connected. The window was closed, so PeriHub ran in the system tray as it does most of the time, while drawing the animated Wave effect on the keyboard:
+
+| | PeriHub 0.3.0 |
+|---|---|
+| Processes | 4: PeriHub, the two processes of the system web view that draw its window (WebKitGTK) and the AppImage runtime |
+| Memory (PSS of all its processes) | 227 MB, of which 24 MB is the AppImage runtime |
+| CPU | 0.2% of one core (average over 2 minutes) |
+| Download | Windows: 3.8 MB (`.exe`) or 5.6 MB (`.msi`). Linux: 7.2 MB (`.deb`, `.rpm`) or 85 MB (AppImage, which carries its own copy of WebKitGTK) |
+
+Memory is the proportional set size (PSS) from `/proc/<pid>/smaps_rollup`, summed over PeriHub and the processes it starts; CPU is the time from `/proc/<pid>/stat` over 120 seconds. With the Wave effect PeriHub draws every frame itself; static colors and the built-in rainbow are not animated by PeriHub. Numbers on Windows, where the window is drawn by WebView2, will differ.
+
+**Compared with G HUB and SteelSeries GG**
+
+- **Platforms.** PeriHub runs on Windows and Linux. Logitech and SteelSeries offer [G HUB](https://www.logitechg.com/en-us/innovation/g-hub.html) and [GG](https://steelseries.com/gg) for Windows and macOS (checked in October 2026).
+- **One app for both brands.** With a SteelSeries keyboard and a Logitech mouse, one program and one tray icon replace two.
+- **Open source.** The code is public under the MIT license, so anyone can check what it does.
+- **What is not compared here.** We have not measured G HUB and GG: they do not run on the Linux PC above, and their memory and CPU use change with the version, the devices and the features in use. They also support many more devices and features than PeriHub, so a side-by-side table would not be fair. To compare on your own Windows PC, run one app at a time and add up the memory of its processes in Task Manager → Details (for PeriHub: `perihub.exe` and the `msedgewebview2.exe` processes it starts).
+
+G HUB is a trademark of Logitech; SteelSeries GG is a trademark of SteelSeries. PeriHub is not affiliated with either company.
 
 ## FAQ
 
