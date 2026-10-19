@@ -1,13 +1,15 @@
 //! Logitech mouse state and operations, run on the device's dedicated thread.
 
+use std::collections::HashMap;
 use std::time::Duration;
 
 use serde::Serialize;
 
 use crate::config::write_backup;
 use crate::error::{Error, Result};
+use crate::hidpp::macros;
 use crate::hidpp::models::MouseModel;
-use crate::hidpp::profile::{self, LedEffect, ProfileSettings};
+use crate::hidpp::profile::{self, ButtonAction, LedEffect, ProfileSettings};
 use crate::hidpp::{DpiCapabilities, FirmwareEntity, HidppDevice, LedZone, OnboardInfo, ROM_SECTOR_BASE};
 use crate::worker::DeviceTask;
 
@@ -126,13 +128,12 @@ impl MouseTask {
             vec![true; self.profile_count() as usize]
         };
         let mut profiles = Vec::new();
+        let mut macro_sectors = HashMap::new();
         for number in 1..=self.profile_count() {
             let sector = self.read_profile_sector(number)?;
-            profiles.push(MouseProfile {
-                number,
-                enabled: enabled[number as usize - 1],
-                settings: ProfileSettings::parse(&sector, self.info.onboard.button_count as usize)?,
-            });
+            let mut settings = ProfileSettings::parse(&sector, self.info.onboard.button_count as usize)?;
+            self.read_macros(&mut settings, &mut macro_sectors)?;
+            profiles.push(MouseProfile { number, enabled: enabled[number as usize - 1], settings });
         }
         Ok(MouseState {
             active_profile: self.dev.active_profile()?,
@@ -149,6 +150,33 @@ impl MouseTask {
             return Ok(sector);
         }
         self.read_factory_sector(number)
+    }
+
+    /// Fills in the steps of the macros bound to the profile's buttons. Macros PeriHub cannot read
+    /// stay without steps; errors talking to the mouse are returned. `cache` keeps the sectors
+    /// already read, since profiles can share macro sectors.
+    fn read_macros(&mut self, settings: &mut ProfileSettings, cache: &mut HashMap<u16, Vec<u8>>) -> Result<()> {
+        let size = self.sector_size();
+        for action in settings.buttons.iter_mut().chain(settings.gshift_buttons.iter_mut()) {
+            let ButtonAction::Macro { sector, offset, steps } = action else { continue };
+            let read = |id: u16| -> Result<Vec<u8>> {
+                if let Some(data) = cache.get(&id) {
+                    return Ok(data.clone());
+                }
+                let data = self.dev.read_sector(id, size)?;
+                cache.insert(id, data.clone());
+                Ok(data)
+            };
+            *steps = match macros::parse(read, *sector, *offset) {
+                Ok(parsed) => Some(parsed),
+                Err(e @ (Error::Hid(_) | Error::Timeout)) => return Err(e),
+                Err(e) => {
+                    log::warn!("macro at sector {sector:#04x} offset {offset:#04x}: {e}");
+                    None
+                }
+            };
+        }
+        Ok(())
     }
 
     fn read_factory_sector(&mut self, number: u8) -> Result<Vec<u8>> {
@@ -227,6 +255,12 @@ impl MouseTask {
             return Err(Error::Invalid(format!("DPI values must be multiples of {}", caps.step)));
         }
         let mut sector = self.read_profile_sector(number)?;
+        // Writing macros is not supported yet: a button can keep a macro the profile already has
+        // (or take it from another button), but cannot point to new memory.
+        let known = ProfileSettings::parse(&sector, self.info.onboard.button_count as usize)?.macro_addresses();
+        if settings.macro_addresses().iter().any(|address| !known.contains(address)) {
+            return Err(Error::Invalid("new macros cannot be saved yet".into()));
+        }
         settings.apply(&mut sector)?;
         self.backup_all(&format!("profile{number}"))?;
         self.write_verified(number as u16, &sector)?;

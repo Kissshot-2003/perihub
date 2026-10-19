@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ButtonAction, KeyInfo } from "../lib/api";
-  import { CONSUMER_KEYS, keyLabel, MODIFIERS, MOUSE_CLICKS, SPECIAL_FUNCTIONS } from "../lib/keys";
+  import { CONSUMER_KEYS, keyLabel, macroSummary, MODIFIERS, MOUSE_CLICKS, SPECIAL_FUNCTIONS } from "../lib/keys";
 
   interface Props {
     action: ButtonAction;
@@ -40,7 +40,8 @@
 
 <div class="row wrap editor">
   <select value={action.type} onchange={(e) => changeKind(value(e) as Kind)}>
-    {#if action.type === "raw"}<option value="raw" disabled>Macro / custom value</option>{/if}
+    {#if action.type === "macro"}<option value="macro" disabled>Macro</option>{/if}
+    {#if action.type === "raw"}<option value="raw" disabled>Custom value</option>{/if}
     {#each KINDS as k (k.kind)}
       <option value={k.kind}>{k.label}</option>
     {/each}
@@ -81,6 +82,9 @@
         <option value={f.value}>{f.label}</option>
       {/each}
     </select>
+  {:else if action.type === "macro"}
+    <span class="small">{macroSummary(action.steps)}</span>
+    <span class="muted small">Stored in the mouse: pick a type to replace it.</span>
   {:else if action.type === "raw"}
     <span class="muted small">Set by another program: pick a type to replace it.</span>
   {:else if action.type === "disabled" && allowDisabledHint}

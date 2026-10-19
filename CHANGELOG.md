@@ -8,6 +8,7 @@
 - Reactive keyboard lighting: the zone of each pressed key lights up and fades back. On Windows the keys come from Raw Input (not tested on a real PC yet). Key presses are read only while the effect is on and are never stored. It needs an optional udev rule, which PeriHub can install and remove after an explicit warning: with it, every program running as the user can read what is typed on the Apex.
 - `perihub-cli focus` prints the app in focus, to find the name to use in a rule.
 - German, French, Spanish, Portuguese, Swedish/Finnish, Norwegian and Danish layouts in the key remapping view, chosen automatically from the system language.
+- Logitech mice: buttons bound to a macro in the mouse's memory show the keys it presses and its total delay, on every supported model. Key presses and delays are read (checked on a G502 HERO); other macro commands show as unreadable. Saving a profile keeps its macros; new macros cannot be written yet.
 
 ### Changed
 - **Security:** the Linux udev rule now opens only the Apex 3 TKL's configuration interface. Before, it also opened the interfaces that report key presses, so programs running as the user could read what was typed on it. Install the new rule to apply the change.

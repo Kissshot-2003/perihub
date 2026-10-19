@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::macros::MacroStep;
 use crate::color::Rgb;
 use crate::error::{Error, Result};
 
@@ -109,7 +110,16 @@ pub enum ButtonAction {
         function: SpecialFunction,
     },
     Disabled,
-    /// Macro or unsupported type: kept byte for byte.
+    /// Macro in the mouse's memory, starting at `offset` in `sector`. `steps` is filled in when the
+    /// mouse is read, and stays `None` if the macro uses commands PeriHub cannot read yet.
+    /// Saving keeps the binding as it is: steps are never written back.
+    Macro {
+        sector: u8,
+        offset: u8,
+        #[serde(default)]
+        steps: Option<Vec<MacroStep>>,
+    },
+    /// Unsupported type: kept byte for byte.
     Raw {
         bytes: [u8; 4],
     },
@@ -132,6 +142,7 @@ impl ButtonAction {
                 }
             }
             [0xFF, 0xFF, 0xFF, 0xFF] => return Self::Disabled,
+            [0x00, sector, 0x00, offset] => return Self::Macro { sector, offset, steps: None },
             _ => {}
         }
         Self::Raw { bytes: b }
@@ -153,6 +164,7 @@ impl ButtonAction {
             }
             Self::Special { function } => [0x90, function.code(), 0xFF, 0xFF],
             Self::Disabled => [0xFF; 4],
+            Self::Macro { sector, offset, .. } => [0x00, sector, 0x00, offset],
             Self::Raw { bytes } => bytes,
         })
     }
@@ -289,6 +301,18 @@ impl ProfileSettings {
             action.encode()?;
         }
         Ok(())
+    }
+
+    /// (sector, offset) of every macro bound to a button, G-Shift layer included.
+    pub fn macro_addresses(&self) -> Vec<(u8, u8)> {
+        self.buttons
+            .iter()
+            .chain(&self.gshift_buttons)
+            .filter_map(|action| match action {
+                ButtonAction::Macro { sector, offset, .. } => Some((*sector, *offset)),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Writes the settings on top of an existing sector and recomputes the CRC.

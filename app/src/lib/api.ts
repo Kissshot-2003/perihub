@@ -96,12 +96,20 @@ export type SpecialFunction =
   | "profile_cycle"
   | "g_shift";
 
+export type MacroStep =
+  | { type: "key_down"; modifiers: number; key: number }
+  | { type: "key_up"; modifiers: number; key: number }
+  | { type: "delay"; ms: number }
+  | { type: "noop" };
+
 export type ButtonAction =
   | { type: "mouse"; button: number }
   | { type: "key"; modifiers: number; key: number }
   | { type: "consumer"; usage: number }
   | { type: "special"; function: SpecialFunction }
   | { type: "disabled" }
+  /** Macro in the mouse's memory; `steps` is null if PeriHub cannot read it yet. */
+  | { type: "macro"; sector: number; offset: number; steps: MacroStep[] | null }
   | { type: "raw"; bytes: number[] };
 
 export type LedEffect =

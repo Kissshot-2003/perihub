@@ -2,6 +2,7 @@
 //!
 //! References: libratbag (MIT) and data read from the real device.
 
+pub mod macros;
 pub mod models;
 pub mod profile;
 
