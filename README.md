@@ -234,25 +234,33 @@ To report a security issue, see [SECURITY.md](SECURITY.md).
 
 ## Performance
 
-PeriHub is a single small program: it installs no background services or drivers and needs no account. Settings stored in the devices' memory (key mapping, mouse profiles, DPI, buttons, macros) keep working when it is closed.
+**Light on Windows.** PeriHub is a small app written in Rust. It draws its window with WebView2, the web engine that comes with Windows 11 and up-to-date Windows 10 (the installer adds it if it is missing), instead of shipping a browser of its own.
 
-Measured on 19 October 2026 with PeriHub 0.3.0 (AppImage) on CachyOS Linux, AMD Ryzen 7 9700X, with the Apex 3 TKL and the G502 HERO connected. The window was closed, so PeriHub ran in the system tray as it does most of the time, while drawing the animated Wave effect on the keyboard:
-
-| | PeriHub 0.3.0 |
+| PeriHub 0.3.0 on Windows | |
 |---|---|
-| Processes | 4: PeriHub, the two processes of the system web view that draw its window (WebKitGTK) and the AppImage runtime |
-| Memory (PSS of all its processes) | 227 MB, of which 24 MB is the AppImage runtime |
-| CPU | 0.2% of one core (average over 2 minutes) |
-| Download | Windows: 3.8 MB (`.exe`) or 5.6 MB (`.msi`). Linux: 7.2 MB (`.deb`, `.rpm`) or 85 MB (AppImage, which carries its own copy of WebKitGTK) |
+| Download | **3.6 MB** installer |
+| On disk | **15 MB** |
+| Memory, in the system tray | **49 MB** |
+| Memory, window open | **47 MB** |
+| CPU | about 2% of one core |
+| Background services | none |
+| Account, ads, telemetry | none |
 
-Memory is the proportional set size (PSS) from `/proc/<pid>/smaps_rollup`, summed over PeriHub and the processes it starts; CPU is the time from `/proc/<pid>/stat` over 120 seconds. With the Wave effect PeriHub draws every frame itself; static colors and the built-in rainbow are not animated by PeriHub. Numbers on Windows, where the window is drawn by WebView2, will differ.
+What this means for you:
 
-**Compared with G HUB and SteelSeries GG**
+- **Quit it and your setup stays.** Key mapping, mouse profiles, DPI, buttons and macros are stored in the devices, so they keep working with PeriHub closed, and nothing of PeriHub keeps running. PeriHub has to stay open only for the keyboard lighting (the Apex does not store it, except the built-in rainbow) and for app profiles.
+- **One app instead of two** if you use a SteelSeries keyboard and a Logitech mouse.
+- **Updates in one click**, signed, and only when you choose.
+- **Also on Linux**, where the official apps are not available: Logitech and SteelSeries offer [G HUB](https://www.logitechg.com/en-us/innovation/g-hub.html) and [GG](https://steelseries.com/gg) for Windows and macOS (checked in October 2026).
 
-- **Platforms.** PeriHub runs on Windows and Linux. Logitech and SteelSeries offer [G HUB](https://www.logitechg.com/en-us/innovation/g-hub.html) and [GG](https://steelseries.com/gg) for Windows and macOS (checked in October 2026).
-- **One app for both brands.** With a SteelSeries keyboard and a Logitech mouse, one program and one tray icon replace two.
-- **Open source.** The code is public under the MIT license, so anyone can check what it does.
-- **What is not compared here.** We have not measured G HUB and GG: they do not run on the Linux PC above, and their memory and CPU use change with the version, the devices and the features in use. They also support many more devices and features than PeriHub, so a side-by-side table would not be fair. To compare on your own Windows PC, run one app at a time and add up the memory of its processes in Task Manager → Details (for PeriHub: `perihub.exe` and the `msedgewebview2.exe` processes it starts).
+<details>
+<summary>How these numbers were measured</summary>
+
+On 19 October 2026 the [Measure on Windows](.github/workflows/measure-windows.yml) workflow installed PeriHub 0.3.0 from the release on a fresh Windows Server 2025 virtual machine on GitHub Actions (AMD EPYC 7763, 4 logical processors, WebView2 154), with no devices connected. Memory is the private working set, which is what Task Manager shows in the Memory column, of PeriHub and the 6 WebView2 processes it starts. CPU is their processor time over 2 minutes. On your PC the numbers will differ, for example with devices connected and an animated lighting effect, which PeriHub draws frame by frame. The workflow is in the repository, so the measurement can be repeated, also on a fork.
+
+</details>
+
+**How does it compare with G HUB or SteelSeries GG?** We do not publish numbers for other apps: we have not measured them on the same machine, and their use of resources changes with the version, the devices and the features in use. They also support many more devices and features than PeriHub. To compare on your own PC, run one app at a time and look at Task Manager → Processes, where each app's processes are grouped under its name. If you do, share your numbers and the versions in [Discussions](https://github.com/hex-dump/perihub/discussions).
 
 G HUB is a trademark of Logitech; SteelSeries GG is a trademark of SteelSeries. PeriHub is not affiliated with either company.
 
