@@ -42,7 +42,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNFNjhBMTE3MjZDMkJGNzcKUldSM3Y4SW1GNkZvUGhsbmdkWFE2L2l2LzZoSnBidGhZcEloM1pKam5UcHdkS29NaUduT1JiYWcK",
       "endpoints": ["https://github.com/hex-dump/perihub/releases/latest/download/latest.json"],
       "windows": { "installMode": "passive" }
     }
