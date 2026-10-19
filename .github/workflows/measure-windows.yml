@@ -1,0 +1,73 @@
+name: Measure on Windows
+
+# Started by hand (Actions → Measure on Windows → Run workflow): installs a release on a clean
+# Windows VM and measures PeriHub's memory and CPU, the numbers quoted in the README. No devices
+# are connected, so PeriHub only waits for them. The results are in the run's summary.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release to measure
+        default: v0.3.0
+
+jobs:
+  measure:
+    runs-on: windows-latest
+    steps:
+      - name: Install the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release download $env:TAG -R $env:GITHUB_REPOSITORY -p '*_x64-setup.exe' -D dl
+          $setup = Get-ChildItem dl\*_x64-setup.exe
+          "Installer: $($setup.Name), $([math]::Round($setup.Length / 1MB, 1)) MB" | Tee-Object -Append results.txt
+          Start-Process $setup.FullName -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\PeriHub" -Recurse -Filter *.exe | Where-Object Name -notmatch 'uninstall' | Select-Object -First 1
+          $exe.FullName | Out-File exe.txt
+
+      - name: Measure
+        shell: pwsh
+        run: |
+          $exe = Get-Content exe.txt
+          $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+          $os = Get-CimInstance Win32_OperatingSystem
+          $webview = (Get-ChildItem "${env:ProgramFiles(x86)}\Microsoft\EdgeWebView\Application\*\msedgewebview2.exe" | Select-Object -First 1).VersionInfo.ProductVersion
+          "System: $($os.Caption) $($os.Version), $($cpu.Name.Trim()), $($cpu.NumberOfLogicalProcessors) logical processors, WebView2 $webview" | Tee-Object -Append results.txt
+          "Installed: $exe, $([math]::Round((Get-ChildItem (Split-Path $exe) -Recurse | Measure-Object Length -Sum).Sum / 1MB, 1)) MB" | Tee-Object -Append results.txt
+
+          # PeriHub and every process it started (the WebView2 processes that draw its window).
+          function Get-Tree([int]$root) {
+            $all = Get-CimInstance Win32_Process
+            $ids = @($root)
+            do {
+              $more = @($all | Where-Object { $ids -contains $_.ParentProcessId -and $ids -notcontains $_.ProcessId } | ForEach-Object ProcessId)
+              $ids += $more
+            } while ($more.Count)
+            $ids
+          }
+          function Measure-PeriHub([string]$label, [string[]]$arguments) {
+            $p = Start-Process $exe -ArgumentList $arguments -PassThru
+            Start-Sleep 60
+            $ids = Get-Tree $p.Id
+            $before = (Get-Process -Id $ids | Measure-Object { $_.TotalProcessorTime.TotalMilliseconds } -Sum).Sum
+            Start-Sleep 120
+            $ids = Get-Tree $p.Id
+            $after = (Get-Process -Id $ids | Measure-Object { $_.TotalProcessorTime.TotalMilliseconds } -Sum).Sum
+            # "Memory" in Task Manager is the private working set.
+            $private = (Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $ids -contains $_.IDProcess } | Measure-Object WorkingSetPrivate -Sum).Sum
+            $names = (Get-Process -Id $ids | Group-Object ProcessName | ForEach-Object { "$($_.Count) $($_.Name)" }) -join ', '
+            "${label}: $($ids.Count) processes ($names), memory $([math]::Round($private / 1MB)) MB (private working set), CPU $([math]::Round(($after - $before) / 120000 * 100, 2))% of one core over 120 s" | Tee-Object -Append results.txt
+            Get-Process -Id $ids -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep 5
+          }
+          Measure-PeriHub 'In the tray (window closed)' @('--hidden')
+          Measure-PeriHub 'Window open' @()
+
+      - name: Summary
+        if: always()
+        shell: pwsh
+        run: |
+          "## PeriHub on Windows" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          Get-Content results.txt | ForEach-Object { "- $_" } | Out-File -Append $env:GITHUB_STEP_SUMMARY
