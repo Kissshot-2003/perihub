@@ -150,6 +150,8 @@ Get the file for your system from the [releases page](https://github.com/hex-dum
 
 No drivers are needed: PeriHub uses the standard Windows HID interfaces.
 
+From version 0.3.0, PeriHub tells you when a new version is out and installs it with one click (**Settings → Updates**).
+
 ### Linux
 
 **AppImage** (any distribution, including Arch and CachyOS):
@@ -221,6 +223,7 @@ PeriHub does not modify firmware. It uses the same configuration commands as the
   - Keyboard: the key mapping is written to RAM first and only saved to memory if the read-back matches; otherwise it is rolled back.
 - **Untested mice are read-only.** For a mouse that has not been verified, the core only allows HID++ functions that read state, and it does not even take the mouse out of software mode.
 - **Factory profiles are read-only.** The mouse's ROM profiles are never written and are used for restoring.
+- **No data leaves your PC.** PeriHub works offline. The only connection is on Windows: at startup it asks GitHub for the latest release (you can turn this off in **Settings → Updates**). An update is downloaded only when you click **Update and restart**, and installed only if its signature matches PeriHub's key.
 - **Key presses stay on your PC.** Only the reactive lighting effect reads key presses, only while it is on, and only from the Apex 3 TKL (on Windows through Raw Input, which any app can use there without a permission). PeriHub keeps nothing but the time of the last press in each lighting zone: which keys you press is never stored, logged or sent anywhere. On Linux, the interfaces that report key presses are closed by default and opened only if you install the optional rule for reactive lighting (see [the warning](#optional-reactive-lighting)).
 - **Backups.** Before every write to a device's memory, PeriHub saves the previous state in
   - Linux: `~/.config/perihub/backups/`

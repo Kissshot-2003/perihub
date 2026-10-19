@@ -199,6 +199,14 @@ export interface DeviceStatus {
 export interface AppSettings {
   start_hidden: boolean;
   autostart: boolean;
+  /** Look for a new version on GitHub at startup. */
+  check_updates: boolean;
+  /** This build can update itself (Windows). */
+  updates_supported: boolean;
+}
+
+export interface UpdateInfo {
+  version: string;
 }
 
 export interface KeyChange {
@@ -249,6 +257,8 @@ export const api = {
   appSettings: () => invoke<AppSettings>("app_get_settings"),
   setAppSettings: (settings: AppSettings) => invoke<AppSettings>("app_set_settings", { settings }),
   quit: () => invoke<void>("app_quit"),
+  checkUpdate: () => invoke<UpdateInfo | null>("update_check"),
+  installUpdate: () => invoke<void>("update_install"),
 };
 
 /** Runs `fn` only after `ms` milliseconds without new calls (for sliders and color pickers). */

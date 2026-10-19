@@ -10,6 +10,8 @@
 - German, French, Spanish, Portuguese, Swedish/Finnish, Norwegian and Danish layouts in the key remapping view, chosen automatically from the system language.
 - Mouse macros stored in the mouse's memory, so they work without PeriHub on any PC. Record them from the keyboard or build them step by step with keys, mouse clicks, media keys, scrolling and pauses. A macro runs once, repeats while the button is held, or runs one part when the button is pressed and another when it is released. Macros are saved on the G502 HERO; other models show theirs read-only.
 
+- Updates on Windows: PeriHub looks for a new version on GitHub when it starts and installs it with one click, after checking its signature. The check can be turned off in Settings, which also shows the version.
+
 ### Changed
 - Mouse backups include every sector of the memory, macros too.
 - **Security:** the Linux udev rule now opens only the Apex 3 TKL's configuration interface. Before, it also opened the interfaces that report key presses, so programs running as the user could read what was typed on it. Install the new rule to apply the change.

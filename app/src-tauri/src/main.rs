@@ -3,6 +3,7 @@
 
 mod commands;
 mod key_access;
+mod updates;
 
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -45,6 +46,7 @@ fn main() {
     tauri::Builder::default()
         // Launching a second time brings the already open window to the front.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![HIDDEN_ARG]),
@@ -148,6 +150,8 @@ fn main() {
             commands::app_get_settings,
             commands::app_set_settings,
             commands::app_quit,
+            updates::update_check,
+            updates::update_install,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start PeriHub");

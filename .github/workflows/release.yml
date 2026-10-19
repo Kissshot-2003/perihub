@@ -39,9 +39,18 @@ jobs:
         working-directory: app
         run: npm ci
 
+      # Installed copies check update files against this key: never release without it.
+      - name: Updater public key is set
+        shell: bash
+        run: test -n "$(jq -r .plugins.updater.pubkey app/src-tauri/tauri.conf.json)"
+
+      # Besides the installers, tauri.updater.conf.json makes signed update files and latest.json,
+      # which PeriHub on Windows downloads from the latest release (see app/src-tauri/src/updates.rs).
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: app
           tagName: ${{ github.ref_name }}
@@ -49,3 +58,6 @@ jobs:
           releaseBody: See CHANGELOG.md.
           releaseDraft: true
           prerelease: false
+          args: --config ${{ github.workspace }}/app/src-tauri/tauri.updater.conf.json
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true

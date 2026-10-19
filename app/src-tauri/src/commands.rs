@@ -262,13 +262,20 @@ pub fn profiles_set(app: AppHandle, state: State<'_, AppState>, profiles: AppPro
 pub struct AppSettings {
     start_hidden: bool,
     autostart: bool,
+    check_updates: bool,
+    /// This build can update itself (Windows): read only.
+    #[serde(default)]
+    updates_supported: bool,
 }
 
 #[tauri::command]
 pub fn app_get_settings(app: AppHandle, state: State<'_, AppState>) -> AppSettings {
+    let config = state.config.lock().unwrap();
     AppSettings {
-        start_hidden: state.config.lock().unwrap().start_hidden,
+        start_hidden: config.start_hidden,
         autostart: app.autolaunch().is_enabled().unwrap_or(false),
+        check_updates: config.check_updates,
+        updates_supported: crate::updates::SUPPORTED,
     }
 }
 
@@ -279,6 +286,7 @@ pub fn app_set_settings(app: AppHandle, state: State<'_, AppState>, settings: Ap
     result.map_err(|e| format!("autostart: {e}"))?;
     let mut config = state.config.lock().unwrap();
     config.start_hidden = settings.start_hidden;
+    config.check_updates = settings.check_updates;
     config.save().map_err(|e| e.to_string())?;
     drop(config);
     Ok(app_get_settings(app, state))

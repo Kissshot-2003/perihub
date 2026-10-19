@@ -48,7 +48,7 @@ pub struct AppProfiles {
     pub rules: Vec<AppRule>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
     pub keyboard: KeyboardConfig,
@@ -56,6 +56,20 @@ pub struct AppConfig {
     pub start_hidden: bool,
     pub lighting_presets: Vec<LightingPreset>,
     pub app_profiles: AppProfiles,
+    /// Look for a new version on GitHub at startup (Windows).
+    pub check_updates: bool,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            keyboard: KeyboardConfig::default(),
+            start_hidden: false,
+            lighting_presets: Vec::new(),
+            app_profiles: AppProfiles::default(),
+            check_updates: true,
+        }
+    }
 }
 
 pub fn config_dir() -> PathBuf {

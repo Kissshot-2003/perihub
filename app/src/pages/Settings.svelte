@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { getVersion } from "@tauri-apps/api/app";
   import { api, errorText, type AppSettings, type DeviceStatus } from "../lib/api";
+  import { checkForUpdate, installUpdate, updates } from "../lib/updates.svelte";
 
   interface Props {
     status: DeviceStatus;
@@ -9,8 +11,10 @@
   let { status }: Props = $props();
   let settings = $state<AppSettings | null>(null);
   let error = $state<string | null>(null);
+  let version = $state("");
 
   onMount(async () => {
+    version = await getVersion();
     settings = await api.appSettings();
   });
 
@@ -50,6 +54,35 @@
     </p>
   </div>
 
+  {#if settings?.updates_supported}
+    <div class="card col">
+      <h2>Updates</h2>
+      <label class="row">
+        <input type="checkbox" checked={settings.check_updates}
+          onchange={(e) => update({ check_updates: (e.target as HTMLInputElement).checked })} />
+        Look for a new version when PeriHub starts
+      </label>
+      <div class="row wrap">
+        {#if updates.available}
+          <span>PeriHub {updates.available.version} is available.</span>
+          <button class="primary" disabled={updates.installing} onclick={installUpdate}>
+            {updates.installing ? "Downloading…" : "Update and restart"}
+          </button>
+        {:else}
+          <button disabled={updates.checking} onclick={checkForUpdate}>
+            {updates.checking ? "Checking…" : "Check now"}
+          </button>
+          {#if updates.checked}<span class="muted small">PeriHub {version} is the latest version.</span>{/if}
+        {/if}
+      </div>
+      {#if updates.error}<div class="notice error">{updates.error}</div>{/if}
+      <p class="muted small">
+        PeriHub asks GitHub for the latest release: nothing else is sent. Updates are installed only when you click
+        “Update and restart”, after their signature is checked. Your settings and the devices' memory are not touched.
+      </p>
+    </div>
+  {/if}
+
   <div class="card col">
     <h2>Where settings are stored</h2>
     <ul class="small">
@@ -72,6 +105,7 @@
 
   <div class="card col">
     <h2>Credits</h2>
+    <p class="small">PeriHub {version}</p>
     <p class="muted small">
       Protocols reconstructed thanks to the work of OpenRGB (Apex lighting), libratbag (Logitech HID++) and
       gorkemgun/apex-3-tkl (Apex key mapping). PeriHub is not affiliated with SteelSeries or Logitech.

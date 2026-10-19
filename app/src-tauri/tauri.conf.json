@@ -39,5 +39,12 @@
       "deb": { "files": { "/usr/lib/udev/rules.d/70-perihub.rules": "../../packaging/linux/70-perihub.rules" } },
       "rpm": { "files": { "/usr/lib/udev/rules.d/70-perihub.rules": "../../packaging/linux/70-perihub.rules" } }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": ["https://github.com/hex-dump/perihub/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
   }
 }

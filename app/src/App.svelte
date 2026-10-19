@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api, type DeviceStatus } from "./lib/api";
+  import { checkForUpdate, updates } from "./lib/updates.svelte";
   import Keyboard from "./pages/Keyboard.svelte";
   import AppProfiles from "./pages/AppProfiles.svelte";
   import Mouse from "./pages/Mouse.svelte";
@@ -28,10 +29,17 @@
 
   onMount(() => {
     api.status().then((s) => (status = s));
+    // A few seconds after startup, so the check does not slow down connecting the devices.
+    const updateTimer = setTimeout(() => {
+      api.appSettings().then((s) => {
+        if (s.updates_supported && s.check_updates) checkForUpdate();
+      });
+    }, 5000);
     const onHash = () => ([page, tab] = fromHash());
     window.addEventListener("hashchange", onHash);
     const unlisten = api.onStatus((s) => (status = s));
     return () => {
+      clearTimeout(updateTimer);
       unlisten.then((fn) => fn());
       window.removeEventListener("hashchange", onHash);
     };
@@ -63,7 +71,10 @@
 
     <div class="grow"></div>
     <button class:active={page === "profiles"} onclick={() => go("profiles")}>App profiles</button>
-    <button class:active={page === "settings"} onclick={() => go("settings")}>Settings</button>
+    <button class:active={page === "settings"} onclick={() => go("settings")}>
+      Settings
+      {#if updates.available}<span class="chip update">Update</span>{/if}
+    </button>
   </nav>
 
   <main>
@@ -116,6 +127,13 @@
 
   .tight {
     gap: 2px;
+  }
+
+  .update {
+    margin-left: auto;
+    padding: 1px 8px;
+    color: var(--accent);
+    border-color: var(--accent);
   }
 
   .brand {
