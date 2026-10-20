@@ -56,6 +56,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 | Buttons | 11 buttons plus the G-Shift layer: mouse clicks, keys with Ctrl/Shift/Alt/Win/Alt Gr, media keys, DPI up/down/cycle/sniper, profile switching | Mouse memory |
 | Lighting | Logo and DPI indicator: off, fixed color with brightness, breathing, color cycle (breathing and color cycle stay in sync on both zones), with live preview | Mouse memory |
 | Macros | Recorded from the keyboard or built step by step: keys, mouse clicks, media keys, scrolling, pauses. Run once, repeat while the button is held, or one part on press and another on release | **Mouse memory**: works without PeriHub, on any PC |
+| Software macros | Run by PeriHub, for what the mouse cannot do alone: repeat a number of times or until you press the button again, type text (accents included), open a website or a program. Up to 8 | PC: PeriHub must be running, also in the tray |
 
 ### App profiles
 
@@ -193,6 +194,13 @@ Reactive lighting needs a second rule, [`71-perihub-keys.rules`](packaging/linux
 
 PeriHub itself reads key presses only while the reactive effect is on and keeps only which lighting zone to light: it never stores, logs or sends them.
 
+#### Optional: software macros
+
+Software macros press keys and click through a virtual keyboard and mouse, made with `/dev/uinput`. Many gaming systems already let your user open it, for game controllers: PeriHub says so on the **Buttons** page. Otherwise it offers to install [`72-perihub-uinput.rules`](packaging/linux/72-perihub-uinput.rules) from the same page, asking for your password, and can remove it there.
+
+> [!WARNING]
+> With this rule, **every program running under your user account can simulate a keyboard and a mouse**, and use them to type and click anything as if it were you: for example, type commands into a terminal. Without it a program needs administrator rights for that. Install it only if you want software macros and trust all the software you run.
+
 ## Usage
 
 - **Keyboard → Lighting**: pick an effect. Changes apply immediately and are remembered.
@@ -227,6 +235,7 @@ PeriHub does not modify firmware. It uses the same configuration commands as the
 - **Untested mice are read-only.** For a mouse that has not been verified, the core only allows HID++ functions that read state, and it does not even take the mouse out of software mode.
 - **Factory profiles are read-only.** The mouse's ROM profiles are never written and are used for restoring.
 - **No data leaves your PC.** PeriHub works offline. The only connection is on Windows: at startup it asks GitHub for the latest release (you can turn this off in **Settings → Updates**). An update is downloaded only when you click **Update and restart**, and installed only if its signature matches PeriHub's key.
+- **Software macros start only from the mouse.** A button starts one by sending an unused key from the mouse's memory (F19, F24, then F13–F18; never F20–F23, which mute the microphone or switch the touchpad on Linux). PeriHub reads that key from the mouse itself: its keyboard reports carry only what the mouse sends, never what you type, so other programs, and the keys PeriHub simulates, cannot start a macro. Every key a macro holds down is released when it stops. A macro opens only a website (http or https) or a file or program given by its full path, never through a command line.
 - **Key presses stay on your PC.** Only the reactive lighting effect reads key presses, only while it is on, and only from the Apex 3 TKL (on Windows through Raw Input, which any app can use there without a permission). PeriHub keeps nothing but the time of the last press in each lighting zone: which keys you press is never stored, logged or sent anywhere. On Linux, the interfaces that report key presses are closed by default and opened only if you install the optional rule for reactive lighting (see [the warning](#optional-reactive-lighting)).
 - **Backups.** Before every write to a device's memory, PeriHub saves the previous state in
   - Linux: `~/.config/perihub/backups/`
@@ -292,8 +301,9 @@ The UI is in English. More languages are on the roadmap.
 - **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
 - **App profiles** detect the app in focus on Windows and on Hyprland only. They switch lighting and mouse profiles, not key mappings, because changing those writes the keyboard's memory.
 - **Not yet available**:
-  - software macros: the mouse runs its own macros, but it cannot open apps or start and stop a macro with two presses, as G HUB's software macros can;
+  - keyboard keys that start software macros (coming in 0.4.1: today only mouse buttons start them);
   - GameSense compatibility.
+- **Software macros** type text through the keyboard layout on Linux, so characters the layout cannot type (with Shift, AltGr or a dead key) are skipped. On Windows many games ignore typed text, but not keys.
 - **Out of scope**: SteelSeries Sonar and Moments, G HUB Lua scripts.
 
 ## Building from source

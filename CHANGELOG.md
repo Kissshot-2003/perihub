@@ -6,6 +6,8 @@
 - PeriHub notices when another program puts the mouse under software control, as G HUB does when it starts and after every wake-up. If no such program is running, the mouse gets its onboard profiles back within a few seconds (with its active profile, which it can lose after a wake-up); if G HUB is running, PeriHub does not fight it and explains what is happening. On Windows it warns while G HUB is running.
 - Log file (`perihub.log`) to attach to bug reports, with an "Open log folder" button in Settings. It records devices connecting, errors and updates, never key presses or the apps in focus.
 - Updates on Windows are also checked once a day while PeriHub runs, and a new version shows in the tray menu.
+- Software macros, run by PeriHub (issue #6): once, a number of times, or until the button is pressed again, with keys, mouse buttons, media keys, scrolling, pauses, typed text (accents included) and opening a website or a program. A mouse button starts one by sending F19, F24 or F13–F18 from the mouse's memory, which PeriHub reads from the mouse itself. On Linux they need access to /dev/uinput: PeriHub offers an optional rule, with a warning. "Stop software macros" in the tray menu stops them all.
+- The mouse page follows profile and DPI changes made with the mouse's buttons.
 - Macro editor: copy a macro from another button or profile (a macro already in the mouse is shared, not written twice), see how much memory it takes and how much is free in the mouse, and import or export macros as files.
 
 ### Changed
