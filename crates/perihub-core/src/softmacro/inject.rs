@@ -139,6 +139,9 @@ mod linux {
 
     use super::{Injector, evdev_consumer, evdev_key};
     use crate::error::{Error, Result};
+    use crate::softmacro::layout::{self, Layout};
+
+    const CHARACTER_GAP: Duration = Duration::from_millis(8);
 
     /// Codes of the modifier keys, by their bit in a HID report.
     const MODIFIERS: [u16; 8] = [29, 42, 56, 125, 97, 54, 100, 126];
@@ -221,8 +224,37 @@ mod linux {
             ])?)
         }
 
-        fn text(&mut self, _text: &str) -> Result<()> {
-            Err(Error::Invalid("typing text is not available on Linux yet".into()))
+        fn text(&mut self, text: &str) -> Result<()> {
+            let layout =
+                Layout::current().ok_or_else(|| Error::Invalid("the keyboard layout could not be read".into()))?;
+            let mut skipped = 0;
+            for c in text.chars() {
+                let Some(presses) = layout.presses(c) else {
+                    skipped += 1;
+                    continue;
+                };
+                for press in presses {
+                    let modifiers: Vec<u16> = [(layout::SHIFT, 42), (layout::ALT_GR, 100)]
+                        .into_iter()
+                        .filter(|(bit, _)| press.modifiers & bit != 0)
+                        .map(|(_, code)| code)
+                        .collect();
+                    for code in &modifiers {
+                        self.keyboard.emit(&[key(*code, true)])?;
+                    }
+                    self.keyboard.emit(&[key(press.code, true)])?;
+                    self.keyboard.emit(&[key(press.code, false)])?;
+                    for code in modifiers.iter().rev() {
+                        self.keyboard.emit(&[key(*code, false)])?;
+                    }
+                    // Some apps drop keys that come faster than a person could type.
+                    std::thread::sleep(CHARACTER_GAP);
+                }
+            }
+            if skipped > 0 {
+                log::warn!("software macro: {skipped} characters cannot be typed with this keyboard layout");
+            }
+            Ok(())
         }
     }
 }

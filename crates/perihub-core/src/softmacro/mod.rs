@@ -7,6 +7,8 @@
 //! the keys PeriHub simulates, cannot start a macro. Nothing that is typed is kept or logged.
 
 pub mod inject;
+#[cfg(target_os = "linux")]
+mod layout;
 mod trigger;
 
 use std::collections::{HashMap, HashSet};

@@ -39,7 +39,7 @@ pub fn watch(on_change: impl FnMut(Option<String>) + Send + 'static) -> bool {
 }
 
 #[cfg(target_os = "linux")]
-mod hyprland {
+pub(crate) mod hyprland {
     use std::io::{BufRead, BufReader, Read, Write};
     use std::os::unix::net::UnixStream;
     use std::path::{Path, PathBuf};
@@ -59,13 +59,18 @@ mod hyprland {
         (!class.is_empty()).then(|| class.to_lowercase())
     }
 
-    /// Class of the window focused right now, asked on the command socket.
-    fn current(dir: &Path) -> Option<String> {
+    /// Asks Hyprland's command socket, e.g. `j/devices`, and returns its JSON reply.
+    pub(crate) fn request(dir: &Path, command: &str) -> Option<serde_json::Value> {
         let mut stream = UnixStream::connect(dir.join(".socket.sock")).ok()?;
-        stream.write_all(b"j/activewindow").ok()?;
+        stream.write_all(command.as_bytes()).ok()?;
         let mut reply = String::new();
         stream.read_to_string(&mut reply).ok()?;
-        let window: serde_json::Value = serde_json::from_str(&reply).ok()?;
+        serde_json::from_str(&reply).ok()
+    }
+
+    /// Class of the window focused right now, asked on the command socket.
+    fn current(dir: &Path) -> Option<String> {
+        let window = request(dir, "j/activewindow")?;
         app_id(window.get("class")?.as_str()?)
     }
 
