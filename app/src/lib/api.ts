@@ -263,6 +263,10 @@ export const api = {
   quit: () => invoke<void>("app_quit"),
   openLogFolder: () => invoke<void>("app_open_log_folder"),
   checkUpdate: () => invoke<UpdateInfo | null>("update_check"),
+  /** Result of the last check made in the background, without asking GitHub again. */
+  updateAvailable: () => invoke<UpdateInfo | null>("update_available"),
+  onUpdate: (handler: (update: UpdateInfo) => void): Promise<UnlistenFn> =>
+    listen<UpdateInfo>("update-available", (event) => handler(event.payload)),
   installUpdate: () => invoke<void>("update_install"),
 };
 

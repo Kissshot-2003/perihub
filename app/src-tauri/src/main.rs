@@ -6,15 +6,14 @@ mod commands;
 mod key_access;
 mod logfile;
 mod updates;
+mod window;
 
 use std::sync::{Arc, Mutex, OnceLock};
 
 use perihub_core::Manager;
 use perihub_core::app_profiles::AppProfileEngine;
 use perihub_core::config::AppConfig;
-use tauri::menu::{Menu, MenuItem};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager as _, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager as _, RunEvent, WindowEvent};
 
 pub struct AppState {
     pub manager: Manager,
@@ -33,14 +32,6 @@ pub fn watch_focus(app: &AppHandle, profiles: &Arc<AppProfileEngine>) {
 /// Argument passed by autostart: start hidden in the system tray.
 pub const HIDDEN_ARG: &str = "--hidden";
 
-fn show_main(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
-    }
-}
-
 fn main() {
     // PeriHub's own messages at info level, other libraries only when something goes wrong.
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn,perihub=info,perihub_core=info"))
@@ -51,7 +42,7 @@ fn main() {
 
     tauri::Builder::default()
         // Launching a second time brings the already open window to the front.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| window::show(app, None)))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -90,49 +81,26 @@ fn main() {
             let start_hidden = hidden_requested || config.start_hidden;
             app.manage(AppState { manager, config: Mutex::new(config), profiles });
 
-            let open = MenuItem::with_id(app, "open", "Open PeriHub", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &quit])?;
-            let mut tray = TrayIconBuilder::with_id("main")
-                .tooltip("PeriHub")
-                .menu(&menu)
-                .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "open" => show_main(app),
-                    "quit" => app.exit(0),
-                    _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
-                        button: MouseButton::Left, button_state: MouseButtonState::Up, ..
-                    } = event
-                    {
-                        show_main(tray.app_handle());
-                    }
-                });
-            if let Some(icon) = app.default_window_icon() {
-                tray = tray.icon(icon.clone());
-            }
-            tray.build(app)?;
+            app.manage(updates::Available::default());
+            window::build_tray(app.handle())?;
+            updates::watch(app.handle().clone());
 
-            // Development only: PERIHUB_PAGE=mouse:buttons opens a page directly.
-            #[cfg(debug_assertions)]
-            if let (Ok(page), Some(window)) = (std::env::var("PERIHUB_PAGE"), app.get_webview_window("main")) {
-                let mut url = window.url()?;
-                url.set_fragment(Some(&page));
-                window.navigate(url)?;
-            }
-
+            // Started hidden (autostart), PeriHub creates no window until it is opened.
             if !start_hidden {
-                show_main(app.handle());
+                window::show(app.handle(), None);
             }
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Closing the window hides it: the app keeps running to maintain lighting and effects.
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+            // Closing the window destroys it (see window.rs). A DPI or LED preview the interface
+            // could not cancel goes back to the saved settings.
+            if let WindowEvent::Destroyed = event {
+                let manager = window.state::<AppState>().manager.clone();
+                std::thread::spawn(move || {
+                    if let Ok(mouse) = manager.mouse() {
+                        let _ = mouse.call(|m| m.revert_preview_if_any());
+                    }
+                });
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -166,8 +134,15 @@ fn main() {
             commands::app_quit,
             commands::app_open_log_folder,
             updates::update_check,
+            updates::update_available,
             updates::update_install,
         ])
-        .run(tauri::generate_context!())
-        .expect("failed to start PeriHub");
+        .build(tauri::generate_context!())
+        .expect("failed to start PeriHub")
+        .run(|_app, event| {
+            // Without windows PeriHub keeps running in the tray; Quit sets an exit code.
+            if let RunEvent::ExitRequested { code: None, api, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }

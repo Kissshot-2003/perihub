@@ -66,6 +66,8 @@ pub struct MouseTask {
     last_mode_check: Instant,
     /// Last valid active profile, restored if the mouse comes back without one.
     last_profile: u8,
+    /// A DPI or LED preview is shown instead of the saved settings.
+    previewing: bool,
 }
 
 /// What to do after reading the mouse's mode.
@@ -125,6 +127,7 @@ impl MouseTask {
             host_mode: Arc::new(AtomicBool::new(false)),
             last_mode_check: Instant::now(),
             last_profile: 1,
+            previewing: false,
         };
         task.check_mode()?;
         task.info.host_mode = task.host_mode.load(Ordering::SeqCst);
@@ -391,7 +394,10 @@ impl MouseTask {
             .or_else(|| others().next())
             .ok_or_else(|| Error::Invalid("a second profile is needed to reload settings".into()))?;
         self.dev.set_active_profile(other)?;
-        self.dev.set_active_profile(active)
+        self.dev.set_active_profile(active)?;
+        // Reloading the profile also drops any DPI or LED preview.
+        self.previewing = false;
+        Ok(())
     }
 
     /// Raw read of a sector (diagnostics).
@@ -402,6 +408,11 @@ impl MouseTask {
     /// Cancels DPI and LED previews by going back to the saved settings.
     pub fn revert_preview(&mut self) -> Result<()> {
         self.reload_active()
+    }
+
+    /// Cancels a preview left by an interface that went away.
+    pub fn revert_preview_if_any(&mut self) -> Result<()> {
+        if self.previewing { self.revert_preview() } else { Ok(()) }
     }
 
     pub fn save_profile(&mut self, number: u8, settings: &ProfileSettings) -> Result<MouseState> {
@@ -489,7 +500,9 @@ impl MouseTask {
         if dpi < caps.min || dpi > caps.max {
             return Err(Error::Invalid(format!("{dpi} DPI")));
         }
-        self.dev.set_sensor_dpi(0, dpi)
+        self.dev.set_sensor_dpi(0, dpi)?;
+        self.previewing = true;
+        Ok(())
     }
 
     pub fn preview_led(&mut self, zone: u8, effect: &LedEffect) -> Result<()> {
@@ -500,7 +513,9 @@ impl MouseTask {
             .find(|z| z.index == zone)
             .cloned()
             .ok_or_else(|| Error::Invalid(format!("LED zone {zone}")))?;
-        self.dev.preview_led_effect(&zone, effect)
+        self.dev.preview_led_effect(&zone, effect)?;
+        self.previewing = true;
+        Ok(())
     }
 }
 

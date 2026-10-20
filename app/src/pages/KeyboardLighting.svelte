@@ -167,9 +167,10 @@
     loaded = true;
   });
 
-  // Brightness can change at any time from the keyboard: follow it while this page is open.
+  // Brightness can change at any time from the keyboard: follow it while this page is in front
+  // (it is read again as soon as the window gets the focus back).
   const brightnessPoll = setInterval(async () => {
-    if (!connected || document.hidden || Date.now() - brightnessTouched < 1500) return;
+    if (!connected || document.hidden || !document.hasFocus() || Date.now() - brightnessTouched < 1500) return;
     try {
       const level = await api.readBrightness();
       if (Date.now() - brightnessTouched >= 1500 && level !== brightness) {

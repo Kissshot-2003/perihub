@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "PeriHub",
         "width": 1160,
         "height": 780,
