@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-10-20
+
+This version fixes what the Windows test of 0.3.0 found. The new features were tested on Linux with the real hardware; on Windows the software macros, the G HUB warning and the new autostart entry have not been tried on a real PC yet: reports are welcome in issue #3. On Windows, PeriHub 0.3.0 finds this version when it starts and installs it from Settings; on Linux, install it by hand.
 
 ### Added
 - PeriHub notices when another program puts the mouse under software control, as G HUB does when it starts and after every wake-up. If no such program is running, the mouse gets its onboard profiles back within a few seconds (with its active profile, which it can lose after a wake-up); if G HUB is running, PeriHub does not fight it and explains what is happening. On Windows it warns while G HUB is running.

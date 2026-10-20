@@ -152,7 +152,7 @@ Get the file for your system from the [releases page](https://github.com/hex-dum
 
 No drivers are needed: PeriHub uses the standard Windows HID interfaces.
 
-From version 0.3.0, PeriHub tells you when a new version is out and installs it with one click (**Settings → Updates**).
+From version 0.3.0, PeriHub tells you when a new version is out and installs it with one click (**Settings → Updates**). From 0.4.0 it also checks once a day while it runs in the tray, and shows the new version in the tray menu.
 
 ### Linux
 
