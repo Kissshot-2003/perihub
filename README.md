@@ -247,18 +247,18 @@ To report a security issue, see [SECURITY.md](SECURITY.md).
 
 **Light on Windows.** PeriHub is a small app written in Rust. It draws its window with WebView2, the web engine that comes with Windows 11 and up-to-date Windows 10 (the installer adds it if it is missing), instead of shipping a browser of its own.
 
-| PeriHub 0.3.0 on Windows | |
+| PeriHub 0.4.0 on Windows | |
 |---|---|
-| Download | **3.6 MB** installer |
-| On disk | **15 MB** |
-| Memory, in the system tray | **49 MB** |
-| Memory, window open | **47 MB** |
-| CPU | about 2% of one core |
+| Download | **3.8 MB** installer |
+| On disk | **16 MB** |
+| In the system tray | **2 MB** of memory, **0.05%** of one CPU core |
+| Window open | **42 MB** of memory, **0.3%** of one CPU core |
 | Background services | none |
 | Account, ads, telemetry | none |
 
 What this means for you:
 
+- **Light in the background.** In the tray PeriHub is a single small process. The web engine that draws the window starts when you open it and closes with it. (0.3.0 kept it running: 49 MB and about 2% of one core in the tray.)
 - **Quit it and your setup stays.** Key mapping, mouse profiles, DPI, buttons and macros are stored in the devices, so they keep working with PeriHub closed, and nothing of PeriHub keeps running. PeriHub has to stay open only for the keyboard lighting (the Apex does not store it, except the built-in rainbow) and for app profiles.
 - **One app instead of two** if you use a SteelSeries keyboard and a Logitech mouse.
 - **Updates in one click**, signed, and only when you choose.
@@ -267,7 +267,7 @@ What this means for you:
 <details>
 <summary>How these numbers were measured</summary>
 
-On 19 October 2026 the [Measure on Windows](.github/workflows/measure-windows.yml) workflow installed PeriHub 0.3.0 from the release on a fresh Windows Server 2025 virtual machine on GitHub Actions (AMD EPYC 7763, 4 logical processors, WebView2 154), with no devices connected. Memory is the private working set, which is what Task Manager shows in the Memory column, of PeriHub and the 6 WebView2 processes it starts. CPU is their processor time over 2 minutes. On your PC the numbers will differ, for example with devices connected and an animated lighting effect, which PeriHub draws frame by frame. The workflow is in the repository, so the measurement can be repeated, also on a fork.
+On 20 October 2026 the [Measure on Windows](.github/workflows/measure-windows.yml) workflow built PeriHub 0.4.0 from its source code and installed it on a fresh Windows Server 2025 virtual machine on GitHub Actions (Intel Xeon Platinum 8573C, 4 logical processors, WebView2 154), with no devices connected. Memory is the private working set, which is what Task Manager shows in the Memory column, of PeriHub and, with the window open, the 6 WebView2 processes it starts. CPU is their processor time over 2 minutes. PeriHub 0.3.0 was measured the same way on 19 October 2026, installed from its release on a machine with an AMD EPYC 7763. On your PC the numbers will differ, for example with devices connected and an animated lighting effect, which PeriHub draws frame by frame. The workflow is in the repository, so the measurement can be repeated, also on a fork.
 
 </details>
 
