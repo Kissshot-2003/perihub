@@ -235,7 +235,7 @@ export interface DeviceStatus {
 export interface AppSettings {
   start_hidden: boolean;
   autostart: boolean;
-  /** Look for a new version on GitHub at startup. */
+  /** Look for a new version on GitHub at startup and once a day. */
   check_updates: boolean;
   /** This build can update itself (Windows). */
   updates_supported: boolean;

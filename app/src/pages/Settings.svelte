@@ -60,7 +60,7 @@
       <label class="row">
         <input type="checkbox" checked={settings.check_updates}
           onchange={(e) => update({ check_updates: (e.target as HTMLInputElement).checked })} />
-        Look for a new version when PeriHub starts
+        Look for a new version when PeriHub starts and once a day
       </label>
       <div class="row wrap">
         {#if updates.available}
