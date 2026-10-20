@@ -1,10 +1,12 @@
 //! Software macros: run by PeriHub, so they can do what a device's own macros cannot: start and
 //! stop with two presses, repeat a number of times, type text, open an app or a website.
 //!
-//! A button that starts one sends an unused key from the device's own memory (F19, F24, then
-//! F13–F18); PeriHub reads that key from the device itself and plays the macro through a simulated
-//! keyboard and mouse. Keys are read from the device, never from the system, so other programs, and
-//! the keys PeriHub simulates, cannot start a macro. Nothing that is typed is kept or logged.
+//! A mouse button or a keyboard key that starts one sends an unused key from the device's own memory
+//! (F19, F24, then F13–F18); PeriHub reads that key from the device itself and plays the macro
+//! through a simulated keyboard and mouse. Keys are read from the devices, never from the system, so
+//! other programs, and the keys PeriHub simulates, cannot start a macro. The keyboard is read only
+//! while one of its keys sends the key of a macro, and every other key is dropped as it arrives:
+//! nothing that is typed is kept or logged.
 
 pub mod inject;
 #[cfg(target_os = "linux")]
@@ -138,6 +140,20 @@ pub struct SoftMacroStatus {
     pub error: Option<String>,
     /// Keys of the macros running now.
     pub running: Vec<u8>,
+    /// PeriHub reads the keyboard's keys, because one of them starts a macro.
+    pub keyboard_read: bool,
+    /// A keyboard key starts a macro, but PeriHub cannot read the keyboard's keys (on Linux this
+    /// needs the optional rule for its keys).
+    pub keyboard_error: Option<String>,
+}
+
+/// The keyboard as a source of trigger keys: the interfaces that report its keys and the trigger
+/// keys its key map sends, on either layer.
+#[derive(Debug, Clone, Default)]
+pub struct KeyboardTriggers {
+    pub boot: Option<CString>,
+    pub bitmap: Option<CString>,
+    pub keys: Vec<u8>,
 }
 
 pub struct SoftMacroEngine {
@@ -146,7 +162,9 @@ pub struct SoftMacroEngine {
     running: Mutex<HashMap<u8, Arc<AtomicBool>>>,
     /// Created the first time a macro runs.
     injector: Mutex<Option<Box<dyn Injector>>>,
-    reader: Mutex<Option<trigger::MouseTrigger>>,
+    mouse_reader: Mutex<Option<trigger::Trigger>>,
+    keyboard_reader: Mutex<Option<trigger::Trigger>>,
+    keyboard_error: Mutex<Option<String>>,
 }
 
 impl SoftMacroEngine {
@@ -155,7 +173,9 @@ impl SoftMacroEngine {
             macros: Mutex::new(macros),
             running: Mutex::default(),
             injector: Mutex::default(),
-            reader: Mutex::default(),
+            mouse_reader: Mutex::default(),
+            keyboard_reader: Mutex::default(),
+            keyboard_error: Mutex::default(),
         })
     }
 
@@ -167,23 +187,48 @@ impl SoftMacroEngine {
     /// path of its HID interface that also carries its keyboard reports and its USB product id,
     /// or `None` without a mouse.
     pub fn watch_mouse(self: &Arc<Self>, mouse: Option<(CString, u16)>) {
-        let wanted = mouse.filter(|_| !self.macros.lock().unwrap().is_empty());
-        let mut reader = self.reader.lock().unwrap();
-        if reader.as_ref().filter(|r| r.is_alive()).map(|r| &r.path) == wanted.as_ref().map(|(path, _)| path) {
-            return;
+        let wanted = mouse
+            .filter(|_| !self.macros.lock().unwrap().is_empty())
+            .map(|(path, product_id)| trigger::Source::Mouse { path, product_id });
+        if let Err(error) = self.watch(&self.mouse_reader, wanted) {
+            log::warn!("software macros: cannot read the mouse's keys: {error}");
+        }
+    }
+
+    /// Follows the keyboard: reads its keys only while one of them sends the key of a macro.
+    /// `None` without a keyboard.
+    pub fn watch_keyboard(self: &Arc<Self>, keyboard: Option<KeyboardTriggers>) {
+        let used = |key: &u8| self.macros.lock().unwrap().iter().any(|m| m.key == *key);
+        let wanted = keyboard
+            .filter(|k| k.keys.iter().any(used))
+            .map(|k| trigger::Source::Keyboard { boot: k.boot, bitmap: k.bitmap });
+        let error = self.watch(&self.keyboard_reader, wanted).err().map(|e| e.to_string());
+        let mut last = self.keyboard_error.lock().unwrap();
+        // Called every few seconds while the macros are on screen: log a failure once.
+        if let Some(error) = error.as_ref().filter(|_| *last != error) {
+            log::warn!("software macros: cannot read the keyboard's keys: {error}");
+        }
+        *last = error;
+    }
+
+    /// Starts, keeps or stops one device's reader.
+    fn watch(self: &Arc<Self>, slot: &Mutex<Option<trigger::Trigger>>, wanted: Option<trigger::Source>) -> Result<()> {
+        let mut reader = slot.lock().unwrap();
+        if reader.as_ref().filter(|r| r.is_alive()).map(|r| &r.source) == wanted.as_ref() {
+            return Ok(());
         }
         *reader = None;
-        if let Some((path, product_id)) = wanted {
-            let engine = Arc::downgrade(self);
-            match trigger::MouseTrigger::start(path, product_id, move |key| {
+        let Some(source) = wanted else { return Ok(()) };
+        let engine = Arc::downgrade(self);
+        *reader = Some(trigger::Trigger::start(
+            source,
+            Arc::new(move |key| {
                 if let Some(engine) = engine.upgrade() {
                     engine.pressed(key);
                 }
-            }) {
-                Ok(started) => *reader = Some(started),
-                Err(error) => log::warn!("software macros: cannot read the mouse's keys: {error}"),
-            }
-        }
+            }),
+        )?);
+        Ok(())
     }
 
     pub fn status(&self) -> SoftMacroStatus {
@@ -191,7 +236,13 @@ impl SoftMacroEngine {
             Ok(()) => (true, None),
             Err(error) => (false, Some(error.to_string())),
         };
-        SoftMacroStatus { available, error, running: self.running.lock().unwrap().keys().copied().collect() }
+        SoftMacroStatus {
+            available,
+            error,
+            running: self.running.lock().unwrap().keys().copied().collect(),
+            keyboard_read: self.keyboard_reader.lock().unwrap().as_ref().is_some_and(|r| r.is_alive()),
+            keyboard_error: self.keyboard_error.lock().unwrap().clone(),
+        }
     }
 
     /// A trigger key was pressed on a device.

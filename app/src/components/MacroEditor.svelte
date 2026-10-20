@@ -20,6 +20,8 @@
     keys: KeyInfo[];
     /** Name of the button the macro is for. */
     button: string;
+    /** A macro run by PeriHub for a keyboard key instead of a mouse button. */
+    keyboard?: boolean;
     /** Macros on other buttons, to start from. */
     library?: MacroSource[];
     /** Bytes free for new macros in the mouse. */
@@ -28,7 +30,7 @@
     oncancel: () => void;
   }
 
-  let { content, soft, onsavesoft, keys, button, library = [], space, onsave, oncancel }: Props = $props();
+  let { content, soft, onsavesoft, keys, button, keyboard = false, library = [], space, onsave, oncancel }: Props = $props();
 
   const initial: Macro = untrack(() => JSON.parse(JSON.stringify(content)));
   const initialSoft: SoftwareMacro | null = untrack(() => (soft ? JSON.parse(JSON.stringify(soft)) : null));
@@ -439,8 +441,9 @@
     </footer>
     {#if software}
       <span class="muted small">
-        PeriHub runs this macro while it is running (also in the tray). The button starts it by sending
-        {initialSoft?.key ? keyLabel(initialSoft.key) : "an unused key (F19, F24, F13–F18)"}, which “Save to mouse” stores in the mouse.
+        PeriHub runs this macro while it is running (also in the tray). The {keyboard ? "key" : "button"} starts it by
+        sending {initialSoft?.key ? keyLabel(initialSoft.key) : "an unused key (F19, F24, F13–F18)"}, which
+        {keyboard ? "“Save to keyboard” stores in the keyboard" : "“Save to mouse” stores in the mouse"}.
       </span>
     {:else}
       <span class="muted small">

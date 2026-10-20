@@ -126,7 +126,15 @@ export interface SoftwareMacro {
 export interface SoftMacrosInfo {
   macros: SoftwareMacro[];
   /** Whether PeriHub can simulate a keyboard and a mouse, and which macros are running. */
-  status: { available: boolean; error: string | null; running: number[] };
+  status: {
+    available: boolean;
+    error: string | null;
+    running: number[];
+    /** PeriHub reads the keyboard's keys, because one of them starts a macro. */
+    keyboard_read: boolean;
+    /** A keyboard key starts a macro, but its keys cannot be read (Linux: permission missing). */
+    keyboard_error: string | null;
+  };
   /** Trigger keys not used yet. */
   free_keys: number[];
   /** Linux: PeriHub's optional /dev/uinput rule is installed / can be installed. */

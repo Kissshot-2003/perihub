@@ -1,9 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { api, errorText, type KeyBinding, type KeyCatalog, type KeyChange, type Keymap } from "../lib/api";
+  import {
+    api, errorText, type KeyBinding, type KeyCatalog, type KeyChange, type Keymap, type Macro, type SoftMacrosInfo,
+    type SoftwareMacro,
+  } from "../lib/api";
   import { bindingLabel, keyLabel, LAYOUT_HEIGHT, LAYOUT_WIDTH, layoutCaps, type KeyCap } from "../lib/keys";
+  import { softSummary } from "../lib/macros";
   import { LAYOUTS, prefs, setLayout, type LayoutId } from "../lib/prefs.svelte";
   import ConfirmButton from "../components/ConfirmButton.svelte";
+  import KeyAccessPermission from "../components/KeyAccessPermission.svelte";
+  import MacroEditor from "../components/MacroEditor.svelte";
+  import SoftMacros from "../components/SoftMacros.svelte";
 
   const UNIT = 46;
   const STEELSERIES_KEY = 0xf0;
@@ -25,16 +32,41 @@
   let busy = $state<string | null>("Reading the key mapping…");
   let error = $state<string | null>(null);
   let message = $state<string | null>(null);
+  /** Macros run by PeriHub, which a key can start. */
+  let soft = $state<SoftMacrosInfo | null>(null);
+  /** Macro run by PeriHub open in the editor, and the key it is for. */
+  let editingSoft = $state<{ macro: SoftwareMacro; layer: 0 | 1; usage: number } | null>(null);
+  const EMPTY_MACRO: Macro = { kind: "once", press: [], release: [] };
 
-  onMount(async () => {
-    try {
-      [catalog, keymap] = await Promise.all([api.keyCatalog(), api.keymap()]);
-    } catch (e) {
-      error = errorText(e);
-    } finally {
-      busy = null;
-    }
+  const refreshSoft = () => api.softMacros().then((i) => (soft = i), () => {});
+
+  onMount(() => {
+    (async () => {
+      try {
+        [catalog, keymap] = await Promise.all([api.keyCatalog(), api.keymap()]);
+      } catch (e) {
+        error = errorText(e);
+      } finally {
+        busy = null;
+      }
+    })();
+    refreshSoft();
+    // Which macros are running, while the window is in front.
+    const timer = setInterval(() => document.hasFocus() && refreshSoft(), 2000);
+    return () => clearInterval(timer);
   });
+
+  /** The macro run by PeriHub that a key with this function starts. */
+  function macroOf(binding: KeyBinding | undefined): SoftwareMacro | undefined {
+    return binding?.type === "key" ? soft?.macros.find((m) => m.key === binding.usage) : undefined;
+  }
+
+  function label(binding: KeyBinding | undefined): string {
+    const m = macroOf(binding);
+    return m ? `Macro: ${m.name}` : bindingLabel(binding);
+  }
+
+  const keyName = (l: number, usage: number) => `${keyLabel(usage)}${l === 1 ? " with SteelSeries" : ""}`;
 
   function factory(l: number, usage: number): KeyBinding {
     if (l === 0) return { type: "key", usage };
@@ -56,18 +88,41 @@
     return !cap.locked && cap.usage !== STEELSERIES_KEY && !!catalog?.sources.includes(cap.usage);
   }
 
-  function setBinding(usage: number, binding: KeyBinding) {
-    const next = { ...drafts[layer] };
-    if (same(binding, saved(layer, usage))) delete next[usage];
+  function setBinding(usage: number, binding: KeyBinding, l: 0 | 1 = layer) {
+    const next = { ...drafts[l] };
+    if (same(binding, saved(l, usage))) delete next[usage];
     else next[usage] = binding;
-    drafts[layer] = next;
+    drafts[l] = next;
   }
 
   function onTarget(event: Event) {
     if (selected === null) return;
-    const value = (event.target as HTMLSelectElement).value;
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
     if (value === "") return;
-    setBinding(selected, value === "factory" ? factory(layer, selected) : { type: "key", usage: Number(value) });
+    if (value === "soft:new") {
+      // The key gets the macro's key once the macro is saved.
+      select.value = selectedValue;
+      editingSoft = { macro: { key: 0, name: keyName(layer, selected), mode: { type: "once" }, steps: [] }, layer, usage: selected };
+    } else if (value.startsWith("soft:")) {
+      setBinding(selected, { type: "key", usage: Number(value.slice(5)) });
+    } else {
+      setBinding(selected, value === "factory" ? factory(layer, selected) : { type: "key", usage: Number(value) });
+    }
+  }
+
+  async function saveSoft(item: SoftwareMacro) {
+    if (!editingSoft) return;
+    const { layer: l, usage } = editingSoft;
+    error = null;
+    try {
+      const savedMacro = await api.saveSoftMacro(item);
+      setBinding(usage, { type: "key", usage: savedMacro.key }, l);
+      editingSoft = null;
+      await refreshSoft();
+    } catch (e) {
+      error = errorText(e);
+    }
   }
 
   const pending = $derived(
@@ -133,12 +188,15 @@
 
   function capSub(cap: KeyCap): string {
     const binding = current(layer, cap.usage);
-    if (layer === 0) return binding && !same(binding, factory(0, cap.usage)) ? `→ ${bindingLabel(binding)}` : "";
-    return bindingLabel(binding);
+    if (layer === 0) return binding && !same(binding, factory(0, cap.usage)) ? `→ ${label(binding)}` : "";
+    return label(binding);
   }
 
   const selectedBinding = $derived(selected === null ? undefined : current(layer, selected));
-  const selectedValue = $derived(selectedBinding?.type === "key" ? String(selectedBinding.usage) : "");
+  const selectedMacro = $derived(macroOf(selectedBinding));
+  const selectedValue = $derived(
+    selectedMacro ? `soft:${selectedMacro.key}` : selectedBinding?.type === "key" ? String(selectedBinding.usage) : "",
+  );
 </script>
 
 <div class="col gap">
@@ -202,13 +260,22 @@
         </div>
         <div class="col tight">
           <span class="small muted">Function</span>
-          <strong>{selectedBinding?.type === "none" ? "Same as without SteelSeries" : bindingLabel(selectedBinding) || "No effect"}</strong>
+          <strong>{selectedBinding?.type === "none" ? "Same as without SteelSeries" : label(selectedBinding) || "No effect"}</strong>
+          {#if selectedMacro}<span class="small muted">{softSummary(selectedMacro)} · sends {keyLabel(selectedMacro.key)}</span>{/if}
         </div>
         <label class="field grow">
           New function
           <select value={selectedValue} onchange={onTarget}>
             <option value="" disabled>Choose a key…</option>
             <option value="factory">Factory default</option>
+            {#if soft}
+              <optgroup label="Macro run by PeriHub">
+                {#each soft.macros as m (m.key)}
+                  <option value="soft:{m.key}">{m.name}</option>
+                {/each}
+                {#if soft.free_keys.length}<option value="soft:new">New macro…</option>{/if}
+              </optgroup>
+            {/if}
             {#each groups as group (group.name)}
               <optgroup label={group.name}>
                 {#each group.keys as key (key.usage)}
@@ -218,8 +285,30 @@
             {/each}
           </select>
         </label>
+        {#if selectedMacro && soft && selected !== null}
+          <button
+            onclick={() =>
+              selectedMacro && selected !== null &&
+              (editingSoft = { macro: JSON.parse(JSON.stringify(selectedMacro)), layer, usage: selected })}
+          >
+            Edit macro…
+          </button>
+        {/if}
       {/if}
     </div>
+
+    {#if selectedMacro && selected !== null}
+      {#if layer === 0}
+        <div class="notice info">
+          This key no longer types “{keyLabel(selected)}”. To keep it, start the macro from the SteelSeries layer instead
+          (“With SteelSeries key” above).
+        </div>
+      {/if}
+      <KeyAccessPermission
+        title="Starting macros from the keyboard needs permission to read what you type on it."
+        ongranted={refreshSoft}
+      />
+    {/if}
 
     <div class="row">
       <ConfirmButton class="danger" disabled={!!busy} onconfirm={resetAll} confirmLabel="Reset all keys?">
@@ -233,11 +322,18 @@
       <button class="primary" disabled={!pending.length || !!busy} onclick={save}>Save to keyboard</button>
     </div>
     <p class="muted small">
-      The mapping is stored in the keyboard's memory and works without PeriHub, on any computer.
-      A backup is created before every save.
+      The mapping is stored in the keyboard's memory and works without PeriHub, on any computer, except keys that start
+      a macro run by PeriHub. A backup is created before every save.
     </p>
+
+    {#if soft}<SoftMacros info={soft} onchange={refreshSoft} />{/if}
   {/if}
 </div>
+
+{#if editingSoft}
+  <MacroEditor content={EMPTY_MACRO} soft={editingSoft.macro} onsavesoft={saveSoft} keys={catalog?.targets ?? []}
+    button={keyName(editingSoft.layer, editingSoft.usage)} keyboard onsave={() => {}} oncancel={() => (editingSoft = null)} />
+{/if}
 
 <style>
   .gap {

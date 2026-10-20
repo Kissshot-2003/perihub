@@ -45,6 +45,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 | 8-zone lighting | Static (one color per zone), gradient, breathing, color cycle, wave, reactive (the zone of each pressed key lights up), built-in rainbow, off | PC (PeriHub reapplies it whenever the keyboard is connected) |
 | Brightness | 0–100% in 17 steps, kept in sync with SteelSeries + F11/F12 | PC |
 | Key remapping | Any key, on both the normal layer and the "SteelSeries key held" layer, with the US, UK, Italian, German, French, Spanish, Portuguese, Swedish/Finnish, Norwegian and Danish layouts | **Keyboard memory**: works without PeriHub |
+| Software macros | A key, for example SteelSeries + 1, can start a macro run by PeriHub (see the G502 HERO below). On Linux this needs the optional rule for reactive lighting | The key in keyboard memory, the macro on the PC: PeriHub must be running |
 
 ### Logitech G502 HERO
 
@@ -56,7 +57,7 @@ PeriHub currently supports the **SteelSeries Apex 3 TKL** keyboard and the **Log
 | Buttons | 11 buttons plus the G-Shift layer: mouse clicks, keys with Ctrl/Shift/Alt/Win/Alt Gr, media keys, DPI up/down/cycle/sniper, profile switching | Mouse memory |
 | Lighting | Logo and DPI indicator: off, fixed color with brightness, breathing, color cycle (breathing and color cycle stay in sync on both zones), with live preview | Mouse memory |
 | Macros | Recorded from the keyboard or built step by step: keys, mouse clicks, media keys, scrolling, pauses. Run once, repeat while the button is held, or one part on press and another on release | **Mouse memory**: works without PeriHub, on any PC |
-| Software macros | Run by PeriHub, for what the mouse cannot do alone: repeat a number of times or until you press the button again, type text (accents included), open a website or a program. Up to 8 | PC: PeriHub must be running, also in the tray |
+| Software macros | Run by PeriHub, for what the mouse cannot do alone: repeat a number of times or until you press the button again, type text (accents included), open a website or a program. Up to 8, started by mouse buttons or keyboard keys | PC: PeriHub must be running, also in the tray |
 
 ### App profiles
 
@@ -185,18 +186,20 @@ sudo udevadm control --reload && sudo udevadm trigger
 
 The rule grants access only to the HID interfaces of the supported devices, and only to the user with the active session. On the Apex 3 TKL it opens only the configuration interface: the interfaces that report what you type stay closed. If you already use OpenRGB with its udev rules, you probably don't need it.
 
-#### Optional: reactive lighting
+<a id="optional-reactive-lighting"></a>
 
-Reactive lighting needs a second rule, [`71-perihub-keys.rules`](packaging/linux/71-perihub-keys.rules), because it reads key presses. PeriHub offers to install it from **Lighting → Reactive**, asking for your password, and can remove it from the same place.
+#### Optional: reactive lighting, and keyboard keys that start software macros
+
+Reactive lighting needs a second rule, [`71-perihub-keys.rules`](packaging/linux/71-perihub-keys.rules), because it reads key presses. So does a key of the Apex 3 TKL that starts a software macro: PeriHub has to read the keyboard to see the macro's key. PeriHub offers to install the rule from **Lighting → Reactive** and from the **Keys** page, asking for your password, and can remove it from the same places.
 
 > [!WARNING]
-> Linux cannot give this permission to PeriHub alone. With the rule installed, **every program running under your user account can read everything you type on the Apex 3 TKL**, including passwords and private messages, in any app and even while PeriHub is closed. A malicious or compromised program could use it as a keylogger. It turns off, for this keyboard, the protection Wayland normally gives. Install it only if you want reactive lighting and trust all the software you run.
+> Linux cannot give this permission to PeriHub alone. With the rule installed, **every program running under your user account can read everything you type on the Apex 3 TKL**, including passwords and private messages, in any app and even while PeriHub is closed. A malicious or compromised program could use it as a keylogger. It turns off, for this keyboard, the protection Wayland normally gives. Install it only if you want reactive lighting or keyboard keys that start software macros, and trust all the software you run.
 
-PeriHub itself reads key presses only while the reactive effect is on and keeps only which lighting zone to light: it never stores, logs or sends them.
+PeriHub itself reads key presses only while the reactive effect is on, or while a key of the keyboard starts a software macro. It keeps only which lighting zone to light or which macro to start: it never stores, logs or sends what you type.
 
 #### Optional: software macros
 
-Software macros press keys and click through a virtual keyboard and mouse, made with `/dev/uinput`. Many gaming systems already let your user open it, for game controllers: PeriHub says so on the **Buttons** page. Otherwise it offers to install [`72-perihub-uinput.rules`](packaging/linux/72-perihub-uinput.rules) from the same page, asking for your password, and can remove it there.
+Software macros press keys and click through a virtual keyboard and mouse, made with `/dev/uinput`. Many gaming systems already let your user open it, for game controllers: PeriHub says so on the mouse's **Buttons** page and on the keyboard's **Keys** page. Otherwise it offers to install [`72-perihub-uinput.rules`](packaging/linux/72-perihub-uinput.rules) from the same pages, asking for your password, and can remove it there. Keys of the Apex 3 TKL that start a macro also need [the rule for its keys](#optional-reactive-lighting-and-keyboard-keys-that-start-software-macros).
 
 > [!WARNING]
 > With this rule, **every program running under your user account can simulate a keyboard and a mouse**, and use them to type and click anything as if it were you: for example, type commands into a terminal. Without it a program needs administrator rights for that. Install it only if you want software macros and trust all the software you run.
@@ -235,8 +238,8 @@ PeriHub does not modify firmware. It uses the same configuration commands as the
 - **Untested mice are read-only.** For a mouse that has not been verified, the core only allows HID++ functions that read state, and it does not even take the mouse out of software mode.
 - **Factory profiles are read-only.** The mouse's ROM profiles are never written and are used for restoring.
 - **No data leaves your PC.** PeriHub works offline. The only connection is on Windows: when it starts and then once a day it asks GitHub for the latest release (you can turn this off in **Settings → Updates**). An update is downloaded only when you click **Update and restart**, and installed only if its signature matches PeriHub's key.
-- **Software macros start only from the mouse.** A button starts one by sending an unused key from the mouse's memory (F19, F24, then F13–F18; never F20–F23, which mute the microphone or switch the touchpad on Linux). PeriHub reacts only to keys that come from the mouse. On Linux it reads the mouse's own keyboard reports, which carry only what the mouse sends, never what you type. On Windows it uses Raw Input, which gives an app the keys of every keyboard: while at least one software macro is saved, PeriHub drops each key that does not come from the mouse as soon as it arrives. Keys simulated by programs, PeriHub's own included, cannot start a macro. Every key a macro holds down is released when it stops. A macro opens only a website (http or https) or a file or program given by its full path, never through a command line.
-- **Key presses stay on your PC.** Two features read key presses: reactive lighting, only while it is on and only from the Apex 3 TKL, and software macros, only the keys the mouse sends. On Windows both use Raw Input, which any app can use there without a permission and which delivers the keys of all keyboards: PeriHub drops those of other devices right away. Reactive lighting keeps nothing but the time of the last press in each lighting zone, and software macros only check whether a key starts one: which keys you press is never stored, logged or sent anywhere. On Linux, the interfaces that report key presses are closed by default and opened only if you install the optional rule for reactive lighting (see [the warning](#optional-reactive-lighting)).
+- **Software macros start only from the devices.** A mouse button or a keyboard key starts one by sending an unused key from the device's memory (F19, F24, then F13–F18; never F20–F23, which mute the microphone or switch the touchpad on Linux). PeriHub reacts only to those keys, and only when they come from the mouse or from the Apex 3 TKL. On Linux it reads the mouse's own keyboard reports, which carry only what the mouse sends, never what you type; it reads the keyboard only while one of its keys starts a macro, and drops every other key as it arrives. On Windows it uses Raw Input, which gives an app the keys of every keyboard: while a software macro is saved, PeriHub drops each key that does not come from the mouse, or from the keyboard while one of its keys starts a macro, as soon as it arrives. Keys simulated by programs, PeriHub's own included, cannot start a macro. Every key a macro holds down is released when it stops. A macro opens only a website (http or https) or a file or program given by its full path, never through a command line.
+- **Key presses stay on your PC.** Two features read key presses: reactive lighting, only while it is on and only from the Apex 3 TKL, and software macros, from the mouse and, only while one of its keys starts a macro, from the Apex 3 TKL. On Windows both use Raw Input, which any app can use there without a permission and which delivers the keys of all keyboards: PeriHub drops those of other devices right away. Reactive lighting keeps nothing but the time of the last press in each lighting zone, and software macros only check whether a key starts one: which keys you press is never stored, logged or sent anywhere. On Linux, the keyboard's interfaces that report key presses are closed by default and opened only if you install the optional rule for its keys (see [the warning](#optional-reactive-lighting-and-keyboard-keys-that-start-software-macros)).
 - **Backups.** Before every write to a device's memory, PeriHub saves the previous state in
   - Linux: `~/.config/perihub/backups/`
   - Windows: `%APPDATA%\perihub\backups\`
@@ -297,12 +300,10 @@ The UI is in English. More languages are on the roadmap.
 
 ## Known limitations
 
-- **Windows**: tested on a real Windows 11 PC: keyboard lighting, reactive lighting, key remapping, mouse profiles, app profiles, tray icon, backups and the update check. Autostart has been checked only by running its command, not with a real login. Software macros and the G HUB warning, new in 0.4.0, have not been tried on a real Windows PC yet. Reports are welcome in [issue #3](https://github.com/hex-dump/perihub/issues/3).
+- **Windows**: tested on a real Windows 11 PC: keyboard lighting, reactive lighting, key remapping, mouse profiles, app profiles, tray icon, backups and the update check. Autostart has been checked only by running its command, not with a real login. Software macros, started by mouse buttons or keyboard keys, and the G HUB warning have not been tried on a real Windows PC yet. Reports are welcome in [issue #3](https://github.com/hex-dump/perihub/issues/3).
 - **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
 - **App profiles** detect the app in focus on Windows and on Hyprland only. They switch lighting and mouse profiles, not key mappings, because changing those writes the keyboard's memory.
-- **Not yet available**:
-  - keyboard keys that start software macros (coming in 0.4.1: today only mouse buttons start them);
-  - GameSense compatibility.
+- **Not yet available**: GameSense compatibility.
 - **Software macros** type text through the keyboard layout on Linux, so characters the layout cannot type (with Shift, AltGr or a dead key) are skipped. On Windows many games ignore typed text, but not keys.
 - **Out of scope**: SteelSeries Sonar and Moments, G HUB Lua scripts.
 

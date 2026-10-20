@@ -4,6 +4,7 @@
   import { keyLabel } from "../lib/keys";
   import { softSummary } from "../lib/macros";
   import ConfirmButton from "./ConfirmButton.svelte";
+  import KeyAccessPermission from "./KeyAccessPermission.svelte";
 
   interface Props {
     info: SoftMacrosInfo;
@@ -42,7 +43,8 @@
   <h3>Macros run by PeriHub</h3>
   <p class="muted small">
     They can repeat until you press the button again, type text and open websites or programs. They work while PeriHub
-    is running, also in the tray. Each one uses a key that its buttons send: F19, F24, then F13–F18 (up to 8 macros).
+    is running, also in the tray. Mouse buttons and keyboard keys start one by sending a key of its own: F19, F24, then
+    F13–F18 (up to 8 macros).
   </p>
 
   {#if error}<div class="notice error">{error}</div>{/if}
@@ -81,6 +83,21 @@
     </div>
   {/if}
 
+  {#if info.status.keyboard_error}
+    <div class="notice error">
+      A key of the Apex 3 TKL starts a macro, but PeriHub cannot read the keyboard's keys: {info.status.keyboard_error}
+    </div>
+    <KeyAccessPermission
+      title="Starting macros from the keyboard needs permission to read what you type on it."
+      ongranted={onchange}
+    />
+  {:else if info.status.keyboard_read}
+    <p class="muted small">
+      PeriHub reads the keys of the Apex 3 TKL, because one of them starts a macro. It acts only on the macro keys and
+      drops every other key as it arrives.
+    </p>
+  {/if}
+
   {#if info.macros.length}
     <div class="list">
       {#each info.macros as m (m.key)}
@@ -99,10 +116,10 @@
     </div>
     <div class="row">
       <button disabled={!info.status.running.length} onclick={() => run(api.stopSoftMacros)}>Stop running macros</button>
-      <span class="muted small">Buttons whose macro is deleted keep sending its key until you change them.</span>
+      <span class="muted small">Buttons and keys whose macro is deleted keep sending its key until you change them.</span>
     </div>
   {:else}
-    <p class="muted small">None yet: choose “Macro run by PeriHub” for a button.</p>
+    <p class="muted small">None yet: choose “Macro run by PeriHub” for a mouse button or a keyboard key.</p>
   {/if}
 </div>
 

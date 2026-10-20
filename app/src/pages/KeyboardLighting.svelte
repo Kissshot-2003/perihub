@@ -2,8 +2,9 @@
   import { onDestroy, onMount } from "svelte";
   import { cubicOut } from "svelte/easing";
   import { Tween } from "svelte/motion";
-  import { api, debounce, errorText, type KeyAccess, type KeyboardLighting, type LightingPreset, type Rgb } from "../lib/api";
+  import { api, debounce, errorText, type KeyboardLighting, type LightingPreset, type Rgb } from "../lib/api";
   import { ZONES } from "../lib/effects";
+  import KeyAccessPermission from "../components/KeyAccessPermission.svelte";
   import ZoneStrip from "../components/ZoneStrip.svelte";
 
   interface Props {
@@ -36,14 +37,6 @@
   let base = $state<Rgb>("#100818");
   let flash = $state<Rgb>("#ff5200");
   let fade = $state(600);
-  const onWindows = navigator.userAgent.includes("Windows");
-  /** Permission to read key presses (Linux), checked when the reactive effect is chosen. */
-  let keyAccess = $state<KeyAccess | null>(null);
-  let understood = $state(false);
-  let accessBusy = $state(false);
-  let accessError = $state<string | null>(null);
-  /** The rule was just removed: the access granted to the keyboard ends when it is plugged in again. */
-  let revoked = $state(false);
   /** Error shown instead of the generic one while the permission is missing. */
   const NO_KEY_ACCESS = "key presses cannot be read";
   /** Keyboard brightness level, 0–16. */
@@ -77,35 +70,6 @@
     );
   }, 60);
 
-  async function checkKeyAccess() {
-    try {
-      keyAccess = await api.keyAccess();
-    } catch (e) {
-      accessError = errorText(e);
-    }
-  }
-
-  async function changeKeyAccess(grant: boolean) {
-    accessBusy = true;
-    accessError = null;
-    try {
-      await (grant ? api.grantKeyAccess() : api.revokeKeyAccess());
-      understood = false;
-      revoked = !grant;
-      // udev applies the new permissions a moment later; then the effect starts reading keys.
-      await new Promise((r) => setTimeout(r, 1500));
-      await checkKeyAccess();
-      if (grant) await api.setLighting(lighting).catch(() => {});
-    } catch (e) {
-      accessError = errorText(e);
-    } finally {
-      accessBusy = false;
-    }
-  }
-
-  $effect(() => {
-    if (kind === "reactive" && !onWindows) checkKeyAccess();
-  });
   const pushBrightness = debounce((level: number) => {
     api.setBrightness(level).then(() => (error = null), (e) => (error = errorText(e)));
   }, 60);
@@ -279,67 +243,11 @@
         The zone of each key you press lights up. PeriHub only uses key presses to light the keyboard while this
         effect is on: they are never stored or sent anywhere.
       </p>
-      {#if keyAccess?.supported && keyAccess.readable === false}
-        <div class="notice warn col">
-          <strong>Reactive lighting needs permission to read what you type on this keyboard.</strong>
-          <span>Before allowing it, know what it means:</span>
-          <ul>
-            <li>
-              Linux cannot give this permission to PeriHub alone. <b>Every program that runs under your user account</b>
-              will be able to read <b>every key you press on the Apex 3 TKL</b>, in any app, even while PeriHub is closed.
-            </li>
-            <li>
-              That includes <b>passwords, private messages and anything else you type</b>. A malicious or compromised
-              program (a downloaded script, a game mod, a browser extension with access to your system) could use it
-              as a keylogger without you noticing.
-            </li>
-            <li>
-              It turns off, for this keyboard, the protection Wayland normally gives you: apps can only see the keys
-              typed into their own windows.
-            </li>
-            <li>
-              PeriHub itself reads key presses only while this effect is on and keeps only which zone to light: it never
-              stores, logs or sends them. The permission, though, stays until you remove it here.
-            </li>
-          </ul>
-          <span>Allow it only if you trust all the software you run. Your password will be asked to install the rule.</span>
-          <label class="row">
-            <input type="checkbox" bind:checked={understood} />
-            I understand that every program running as my user will be able to read what I type on this keyboard.
-          </label>
-          <div class="row">
-            <button class="danger" disabled={!understood || accessBusy} onclick={() => changeKeyAccess(true)}>
-              {accessBusy ? "Waiting for the password…" : "Allow PeriHub to read key presses"}
-            </button>
-          </div>
-        </div>
-      {:else if keyAccess?.supported && keyAccess.readable && keyAccess.rule_installed}
-        <div class="row small muted">
-          <span class="grow">
-            Programs running as your user can read key presses on this keyboard, because you allowed it for reactive
-            lighting.
-          </span>
-          <button class="danger" disabled={accessBusy} onclick={() => changeKeyAccess(false)}>Remove permission</button>
-        </div>
-      {:else if keyAccess?.supported && keyAccess.readable && revoked}
-        <div class="notice info">
-          Permission removed. To finish, unplug the keyboard and plug it in again (or restart the computer).
-        </div>
-      {:else if keyAccess?.supported && keyAccess.readable}
-        <p class="muted small">
-          Another rule on this system (for example OpenRGB's) already lets programs running as your user read key
-          presses on this keyboard.
-        </p>
-      {/if}
-      {#if accessError}
-        <div class="notice error col">
-          <span>{accessError}</span>
-          {#if keyAccess}
-            <span class="small">You can also run this in a terminal:</span>
-            <code>{keyAccess.rule_installed ? keyAccess.manual_remove : keyAccess.manual_install}</code>
-          {/if}
-        </div>
-      {/if}
+      <!-- With the permission granted, the effect starts reading keys once it is applied again. -->
+      <KeyAccessPermission
+        title="Reactive lighting needs permission to read what you type on this keyboard."
+        ongranted={() => api.setLighting(lighting).catch(() => {})}
+      />
     {/if}
 
     {#if kind === "wave"}
@@ -443,25 +351,5 @@
 
   .tight {
     padding: 2px 4px;
-  }
-
-  .notice.warn {
-    color: var(--text);
-    border-color: #6b4a12;
-    background: #261c0c;
-    gap: 8px;
-  }
-
-  .notice ul {
-    margin: 0;
-    padding-left: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  code {
-    user-select: all;
-    word-break: break-all;
   }
 </style>

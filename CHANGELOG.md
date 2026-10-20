@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Keys of the Apex 3 TKL can start software macros (issue #6): on the **Keys** page choose "Macro run by PeriHub" for a key, for example SteelSeries + 1, and pick a macro or create one. The key sends the macro's key from the keyboard's memory. PeriHub reads the keyboard's keys only while one of them starts a macro, acts only on the macro keys and drops every other key as it arrives. On Linux this needs the optional rule for the keyboard's keys, the same as reactive lighting, with the same warning. Tested on Linux with the real keyboard; not tried on a real Windows PC yet.
+- The software macros card is also on the **Keys** page.
+
 ## 0.4.0 — 2026-10-20
 
 This version fixes what the Windows test of 0.3.0 found. The new features were tested on Linux with the real hardware; on Windows the software macros, the G HUB warning and the new autostart entry have not been tried on a real PC yet: reports are welcome in issue #3. On Windows, PeriHub 0.3.0 finds this version when it starts and installs it from Settings; on Linux, install it by hand.

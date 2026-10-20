@@ -1,4 +1,5 @@
-//! Key presses of the Apex 3 TKL, for the reactive lighting effect.
+//! Key presses of the Apex 3 TKL, for the reactive lighting effect (and, with the same report
+//! parsing, for the keys that start software macros: see `crate::softmacro`).
 //!
 //! Linux: the keyboard reports up to six keys on interface 0 (boot keyboard report) and any further
 //! keys on interface 2 (one bit per key), and Linux gives PeriHub a copy of these reports while the
@@ -24,7 +25,7 @@ use crate::error::Result;
 
 /// Raw Input device names contain the USB ids, e.g. `\\?\HID#VID_1038&PID_1622&MI_00#…`.
 #[cfg(windows)]
-const APEX: &str = "VID_1038&PID_1622";
+pub(crate) const APEX: &str = "VID_1038&PID_1622";
 
 /// How often the reading threads check whether they should stop.
 #[cfg(not(windows))]
@@ -32,10 +33,10 @@ const READ_TIMEOUT_MS: i32 = 200;
 
 /// Keys held down in one report, one bit per HID usage.
 #[derive(Clone, Copy, Default, PartialEq)]
-struct Pressed([u64; 4]);
+pub(crate) struct Pressed([u64; 4]);
 
 impl Pressed {
-    fn set(&mut self, usage: u8) {
+    pub(crate) fn set(&mut self, usage: u8) {
         self.0[usize::from(usage / 64)] |= 1 << (usage % 64);
     }
 
@@ -45,7 +46,7 @@ impl Pressed {
 
     /// Boot keyboard report: modifier bits, a reserved byte, then up to six usages.
     #[cfg_attr(windows, allow(dead_code))]
-    fn from_boot_report(report: &[u8]) -> Self {
+    pub(crate) fn from_boot_report(report: &[u8]) -> Self {
         let mut keys = Self::default();
         if let [modifiers, _, usages @ ..] = report {
             (0..8).filter(|bit| modifiers >> bit & 1 != 0).for_each(|bit| keys.set(0xE0 + bit));
@@ -57,7 +58,7 @@ impl Pressed {
 
     /// Bitmap report: bit n of the report is HID usage n.
     #[cfg_attr(windows, allow(dead_code))]
-    fn from_bitmap(report: &[u8]) -> Self {
+    pub(crate) fn from_bitmap(report: &[u8]) -> Self {
         let mut keys = Self::default();
         for (i, byte) in report.iter().enumerate().take(32) {
             (0..8).filter(|bit| byte >> bit & 1 != 0).for_each(|bit| keys.set(i as u8 * 8 + bit));
@@ -71,28 +72,39 @@ impl Pressed {
     }
 }
 
+/// Keys held on the keyboard's two key interfaces.
+#[derive(Default)]
+pub(crate) struct HeldKeys([Pressed; 2]);
+
+impl HeldKeys {
+    /// Records the keys now held on one interface and returns the keys newly pressed. A key counts
+    /// as pressed only if no interface was holding it, so a key moving from one report to the
+    /// other is not pressed again.
+    pub(crate) fn update(&mut self, interface: usize, now: Pressed) -> Vec<u8> {
+        let before = self.union();
+        self.0[interface] = now;
+        self.union().new_since(before).collect()
+    }
+
+    fn union(&self) -> Pressed {
+        let [a, b] = self.0;
+        Pressed(std::array::from_fn(|i| a.0[i] | b.0[i]))
+    }
+}
+
 /// What the reading threads share: the last press in each zone, and the keys held on each interface.
 #[derive(Default)]
 struct Shared {
     hits: [Option<Instant>; ZONES],
-    held: [Pressed; 2],
+    held: HeldKeys,
 }
 
 impl Shared {
-    /// Records the keys now held on one interface. A key counts as pressed only if no interface
-    /// was holding it, so a key moving from one report to the other does not light up again.
     fn update(&mut self, interface: usize, now: Pressed) {
-        let before = self.union();
-        self.held[interface] = now;
         let at = Instant::now();
-        for zone in self.union().new_since(before).filter_map(zone_of) {
+        for zone in self.held.update(interface, now).into_iter().filter_map(zone_of) {
             self.hits[zone] = Some(at);
         }
-    }
-
-    fn union(&self) -> Pressed {
-        let [a, b] = self.held;
-        Pressed(std::array::from_fn(|i| a.0[i] | b.0[i]))
     }
 }
 

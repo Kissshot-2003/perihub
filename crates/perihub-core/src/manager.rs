@@ -17,6 +17,7 @@ use crate::hidpp::HidppDevice;
 use crate::hidpp::models::{self, MouseModel};
 use crate::keyboard::{KeyInterfaces, KeyboardInfo, KeyboardTask};
 use crate::mouse::{MouseInfo, MouseTask};
+use crate::softmacro::KeyboardTriggers;
 use crate::worker::Worker;
 
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
@@ -69,6 +70,8 @@ struct Slots {
     mouse_failed: Option<CString>,
     /// Interfaces of the connected keyboard that report key presses.
     key_interfaces: KeyInterfaces,
+    /// Keys of the connected keyboard's map that start software macros, kept by its thread.
+    keyboard_macro_keys: Option<Arc<Mutex<Vec<u8>>>>,
 }
 
 pub type Listener = Box<dyn Fn(&DeviceStatus) + Send + Sync>;
@@ -145,6 +148,7 @@ impl Manager {
                 slots.keyboard = None;
                 log::info!("keyboard disconnected");
                 slots.key_interfaces = KeyInterfaces::default();
+                slots.keyboard_macro_keys = None;
                 changed = true;
             }
             slots.keyboard.is_some()
@@ -160,6 +164,7 @@ impl Manager {
                 Ok(task) => {
                     let info = task.info.clone();
                     log::info!("keyboard connected: {}, firmware {}", info.name, info.firmware);
+                    slots.keyboard_macro_keys = Some(task.macro_keys_handle());
                     slots.keyboard = Some((Worker::spawn("perihub-keyboard", task), info));
                     slots.key_interfaces = key_interfaces;
                     None
@@ -281,6 +286,17 @@ impl Manager {
         let slots = self.slots.lock().unwrap();
         let (_, info) = slots.mouse.as_ref()?;
         Some((slots.mouse_path.clone()?, info.product_id))
+    }
+
+    /// The connected keyboard as a source of keys that start software macros.
+    pub fn keyboard_triggers(&self) -> Option<KeyboardTriggers> {
+        let slots = self.slots.lock().unwrap();
+        slots.keyboard.as_ref()?;
+        Some(KeyboardTriggers {
+            boot: slots.key_interfaces.boot.clone(),
+            bitmap: slots.key_interfaces.bitmap.clone(),
+            keys: slots.keyboard_macro_keys.as_ref()?.lock().unwrap().clone(),
+        })
     }
 
     pub fn mouse(&self) -> Result<Worker<MouseTask>> {

@@ -1,6 +1,7 @@
 //! Keyboard state and operations, run on the device's dedicated thread.
 
 use std::ffi::CString;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
@@ -10,6 +11,7 @@ use crate::apex::{Apex3Tkl, KeyBinding, Layer, MAX_BRIGHTNESS};
 use crate::config::{KeyboardConfig, write_backup};
 use crate::effects::{Frame, KeyboardLighting, NO_PRESSES};
 use crate::error::{Error, Result};
+use crate::softmacro::TRIGGER_KEYS;
 use crate::worker::DeviceTask;
 
 const FRAME_INTERVAL: Duration = Duration::from_millis(33);
@@ -47,6 +49,23 @@ pub struct KeyboardTask {
     /// Reads key presses, only while the lighting reacts to them.
     keys: Option<KeyWatcher>,
     keys_failed: Option<Instant>,
+    /// Keys that start software macros which the key map sends (see [`macro_keys`]).
+    macro_keys: Arc<Mutex<Vec<u8>>>,
+}
+
+/// Keys that start software macros ([`TRIGGER_KEYS`]) which the key map sends, on either layer.
+fn macro_keys(keymap: &Keymap) -> Vec<u8> {
+    let mut keys: Vec<u8> = [&keymap.normal, &keymap.steelseries]
+        .into_iter()
+        .flat_map(|layer| layer.values())
+        .filter_map(|binding| match binding {
+            KeyBinding::Key { usage } if TRIGGER_KEYS.contains(usage) => Some(*usage),
+            _ => None,
+        })
+        .collect();
+    keys.sort_unstable();
+    keys.dedup();
+    keys
 }
 
 impl KeyboardTask {
@@ -61,8 +80,14 @@ impl KeyboardTask {
             key_interfaces,
             keys: None,
             keys_failed: None,
+            macro_keys: Arc::default(),
         };
         task.dev.set_brightness(config.brightness.min(MAX_BRIGHTNESS))?;
+        // Which keys start software macros. The keyboard works without it.
+        match task.keymap() {
+            Ok(keymap) => *task.macro_keys.lock().unwrap() = macro_keys(&keymap),
+            Err(error) => log::warn!("keyboard: key map not read: {error}"),
+        }
         if let Err(error) = task.watch_keys() {
             log::warn!("reactive lighting: {error}");
         }
@@ -134,7 +159,14 @@ impl KeyboardTask {
         let before = self.keymap()?;
         write_backup("apex3tkl", "keymap", &[("keymap.json", serde_json::to_string_pretty(&before)?.as_bytes())])?;
         let [normal, steelseries] = self.dev.apply_changes(changes)?;
-        Ok(Keymap { normal, steelseries })
+        let keymap = Keymap { normal, steelseries };
+        *self.macro_keys.lock().unwrap() = macro_keys(&keymap);
+        Ok(keymap)
+    }
+
+    /// Keys that start software macros which the key map sends, kept up to date.
+    pub fn macro_keys_handle(&self) -> Arc<Mutex<Vec<u8>>> {
+        self.macro_keys.clone()
     }
 
     /// Resets all keys to their factory values.

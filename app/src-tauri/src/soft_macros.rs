@@ -26,6 +26,8 @@ pub struct SoftMacrosInfo {
 
 #[tauri::command]
 pub fn soft_get(state: State<'_, AppState>) -> SoftMacrosInfo {
+    // Tries again to read the keyboard, for instance after the permission was granted.
+    state.soft.watch_keyboard(state.manager.keyboard_triggers());
     let macros = state.soft.macros();
     let free_keys = TRIGGER_KEYS.iter().copied().filter(|k| !macros.iter().any(|m| m.key == *k)).collect();
     SoftMacrosInfo {
@@ -42,8 +44,10 @@ fn store(state: &AppState, change: impl FnOnce(&mut Vec<SoftwareMacro>) -> Resul
     change(&mut config.software_macros)?;
     config.save().map_err(|e| e.to_string())?;
     state.soft.set_macros(config.software_macros.clone());
-    // Reading the mouse's trigger keys starts with the first macro and stops with the last one.
+    // Reading the mouse's trigger keys starts with the first macro and stops with the last one;
+    // the keyboard's keys are read only while one of them starts a macro.
     state.soft.watch_mouse(state.manager.mouse_id());
+    state.soft.watch_keyboard(state.manager.keyboard_triggers());
     Ok(())
 }
 

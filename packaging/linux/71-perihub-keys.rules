@@ -1,12 +1,13 @@
-# PeriHub, optional: reactive lighting on the SteelSeries Apex 3 TKL.
+# PeriHub, optional: reactive lighting, and keys that start software macros, on the SteelSeries Apex 3 TKL.
 #
 # WARNING: this lets EVERY program running as the logged-in user read everything typed on the
 # Apex 3 TKL, including passwords and private messages, even while other apps are in focus.
 # Linux cannot grant this to PeriHub alone, and it bypasses the protection Wayland normally gives.
 # A malicious or compromised program running as your user could use it as a keylogger.
-# Install it only if you want reactive lighting and trust all the software you run.
+# Install it only if you want these features and trust all the software you run.
 #
-# PeriHub can install and remove this rule from the reactive lighting settings. Manual install:
+# PeriHub can install and remove this rule from the reactive lighting settings and the Keys page.
+# Manual install:
 #   sudo cp 71-perihub-keys.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
 # Remove:
 #   sudo rm /etc/udev/rules.d/71-perihub-keys.rules && sudo udevadm control --reload && sudo udevadm trigger

@@ -95,13 +95,18 @@ pub struct KeyChange {
 pub async fn kb_apply_keymap(state: State<'_, AppState>, changes: Vec<KeyChange>) -> CmdResult<Keymap> {
     let changes: Vec<_> = changes.into_iter().map(|c| (c.layer, c.source, c.binding)).collect();
     let manager = state.manager.clone();
-    blocking(move || manager.keyboard()?.call(move |k| k.apply_keymap(&changes))).await
+    let keymap = blocking(move || manager.keyboard()?.call(move |k| k.apply_keymap(&changes))).await;
+    // A key may now start a software macro, or no longer.
+    state.soft.watch_keyboard(state.manager.keyboard_triggers());
+    keymap
 }
 
 #[tauri::command]
 pub async fn kb_reset_keymap(state: State<'_, AppState>) -> CmdResult<Keymap> {
     let manager = state.manager.clone();
-    blocking(move || manager.keyboard()?.call(|k| k.reset_keymap())).await
+    let keymap = blocking(move || manager.keyboard()?.call(|k| k.reset_keymap())).await;
+    state.soft.watch_keyboard(state.manager.keyboard_triggers());
+    keymap
 }
 
 #[derive(Serialize)]
