@@ -5,6 +5,7 @@ mod autostart;
 mod commands;
 mod key_access;
 mod logfile;
+mod macro_files;
 mod updates;
 mod window;
 
@@ -44,6 +45,7 @@ fn main() {
         // Launching a second time brings the already open window to the front.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| window::show(app, None)))
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![HIDDEN_ARG]),
@@ -133,6 +135,8 @@ fn main() {
             commands::app_set_settings,
             commands::app_quit,
             commands::app_open_log_folder,
+            macro_files::macro_export,
+            macro_files::macro_import,
             updates::update_check,
             updates::update_available,
             updates::update_install,

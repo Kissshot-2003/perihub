@@ -1,7 +1,7 @@
 <script lang="ts">
   // Editor for a macro stored in the mouse: kind, steps recorded from the keyboard or added by hand.
   import { untrack } from "svelte";
-  import type { KeyInfo, Macro, MacroKind, MacroStep } from "../lib/api";
+  import { api, errorText, type KeyInfo, type Macro, type MacroKind, type MacroStep } from "../lib/api";
   import { CONSUMER_KEYS, keyLabel, MOUSE_CLICKS } from "../lib/keys";
   import {
     DEFAULT_DELAY_MS, MACRO_KINDS, MAX_DELAY_MS, MODIFIER_KEYS, macroSize, recordedStep, releaseOf, stepLabel,
@@ -86,17 +86,47 @@
     }
   }
 
-  /** Replaces the macro with a copy of one from another button. */
-  function copyFrom(e: Event) {
-    const select = e.target as HTMLSelectElement;
-    const source = library[Number(select.value)];
-    select.value = "";
-    if (!source) return;
-    const copy: Macro = JSON.parse(JSON.stringify(source.content));
+  /** Replaces the macro being edited. */
+  function load(m: Macro) {
+    const copy: Macro = JSON.parse(JSON.stringify(m));
     kind = copy.kind;
     press = copy.press;
     release = copy.release;
     part = "press";
+  }
+
+  /** Copies a macro from another button. */
+  function copyFrom(e: Event) {
+    const select = e.target as HTMLSelectElement;
+    const source = library[Number(select.value)];
+    select.value = "";
+    if (source) load(source.content);
+  }
+
+  let fileError = $state<string | null>(null);
+  let fileMessage = $state<string | null>(null);
+
+  async function importFile() {
+    fileError = fileMessage = null;
+    try {
+      const m = await api.importMacro();
+      if (m) {
+        load(m);
+        fileMessage = "Macro imported: check it, then click Done.";
+      }
+    } catch (e) {
+      fileError = errorText(e);
+    }
+  }
+
+  async function exportFile() {
+    fileError = fileMessage = null;
+    try {
+      const m = { kind, press: $state.snapshot(press), release: kind === "sequence" ? $state.snapshot(release) : [] };
+      if (await api.exportMacro(m, `PeriHub macro - ${button}`)) fileMessage = "Macro exported.";
+    } catch (e) {
+      fileError = errorText(e);
+    }
   }
 
   function move(steps: MacroStep[], i: number, by: number) {
@@ -323,8 +353,13 @@
       <div class="notice info">Still pressed when the macro ends: {leftDown.join(", ")}. Add the release if it is not meant to stay down.</div>
     {/if}
 
+    {#if fileError}<div class="notice error">{fileError}</div>{/if}
+    {#if fileMessage}<div class="notice ok">{fileMessage}</div>{/if}
+
     <footer class="row">
       <button class="ghost" disabled={recording} onclick={() => { press = []; release = []; }}>Clear</button>
+      <button class="ghost" disabled={recording} onclick={importFile}>Import…</button>
+      <button class="ghost" disabled={recording || (!press.length && !release.length)} onclick={exportFile}>Export…</button>
       <div class="grow"></div>
       {#if problem}<span class="warn small">{problem}</span>{/if}
       <button onclick={oncancel}>Cancel</button>

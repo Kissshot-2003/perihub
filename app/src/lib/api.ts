@@ -264,6 +264,10 @@ export const api = {
   setAppSettings: (settings: AppSettings) => invoke<AppSettings>("app_set_settings", { settings }),
   quit: () => invoke<void>("app_quit"),
   openLogFolder: () => invoke<void>("app_open_log_folder"),
+  /** Saves a macro to a file chosen in the system's dialog; false if cancelled. */
+  exportMacro: (content: Macro, name: string) => invoke<boolean>("macro_export", { content, name }),
+  /** Reads a macro from a file chosen in the system's dialog; null if cancelled. */
+  importMacro: () => invoke<Macro | null>("macro_import"),
   checkUpdate: () => invoke<UpdateInfo | null>("update_check"),
   /** Result of the last check made in the background, without asking GitHub again. */
   updateAvailable: () => invoke<UpdateInfo | null>("update_available"),
