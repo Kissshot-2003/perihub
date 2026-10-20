@@ -202,7 +202,9 @@ PeriHub itself reads key presses only while the reactive effect is on and keeps 
 
 ### Running in the background
 
-Closing the window does **not** quit PeriHub. It keeps running to animate the keyboard lighting and to reapply it when the keyboard is plugged back in or the PC wakes up. Reopen it from the tray icon or by launching it again. To quit for real: **Settings → Quit PeriHub**.
+Closing the window does **not** quit PeriHub. It keeps running in the tray, without the window and with much less memory, to animate the keyboard lighting and to reapply it when the keyboard is plugged back in or the PC wakes up. Reopen it from the tray icon or by launching it again. To quit for real: **Quit** in the tray menu or **Settings → Quit PeriHub**.
+
+On **Windows 11** new tray icons start among the hidden ones (the **^** arrow). To keep PeriHub in sight: **Settings → Personalization → Taskbar → Other system tray icons → PeriHub**.
 
 **Autostart** can be enabled in Settings. On Hyprland, XDG autostart entries only run when `xdg-desktop-autostart.target` is active (uwsm or systemd). Otherwise, add this to your configuration:
 
@@ -267,7 +269,7 @@ G HUB is a trademark of Logitech; SteelSeries GG is a trademark of SteelSeries. 
 ## FAQ
 
 **Can I keep GG or G HUB running?**
-No, quit them. On Windows, G HUB in particular takes control of the mouse and would undo your changes.
+No, quit them and turn off their autostart. On Windows, G HUB takes control of the mouse when it starts and after every wake-up, so the mouse stops using its onboard profiles; PeriHub shows a warning while G HUB is running. When G HUB is closed, PeriHub gives the mouse back its profiles within a few seconds.
 
 **Does this void my warranty?**
 PeriHub does not touch the firmware. It only writes settings (profiles, key mapping) that the official apps write too.
@@ -286,7 +288,7 @@ The UI is in English. More languages are on the roadmap.
 
 ## Known limitations
 
-- **Windows**: first test on a real Windows PC passed (keyboard lighting, key remapping, mouse profiles). Reports from other setups are welcome.
+- **Windows**: tested on a real Windows 11 PC: keyboard lighting, reactive lighting, key remapping, mouse profiles, app profiles, tray icon, backups and the update check. Autostart has been checked only by running its command, not with a real login. Reports from other setups are welcome.
 - **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
 - **App profiles** detect the app in focus on Windows and on Hyprland only. They switch lighting and mouse profiles, not key mappings, because changing those writes the keyboard's memory.
 - **Not yet available**:

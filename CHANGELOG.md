@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- PeriHub notices when another program puts the mouse under software control, as G HUB does when it starts and after every wake-up. If no such program is running, the mouse gets its onboard profiles back within a few seconds (with its active profile, which it can lose after a wake-up); if G HUB is running, PeriHub does not fight it and explains what is happening. On Windows it warns while G HUB is running.
+- Log file (`perihub.log`) to attach to bug reports, with an "Open log folder" button in Settings. It records devices connecting, errors and updates, never key presses or the apps in focus.
+- Updates on Windows are also checked once a day while PeriHub runs, and a new version shows in the tray menu.
+
+### Changed
+- Closing the window frees the web view that draws it: in the tray PeriHub uses a fraction of the memory it used before, and started hidden it creates no window at all.
+- The keyboard lighting preview animates only while the window is in front, and static effects are drawn once: an open window in the background no longer uses CPU.
+- The Windows autostart entry puts PeriHub's path in quotes, so it works with a space in the user folder name.
+
+### Fixed
+- After a wake-up with G HUB running, PeriHub kept saying the mouse used its onboard profiles, and app profiles failed to switch it with "invalid argument".
+
 ## 0.3.0 — 2026-10-19
 
 The new features were tested on Linux with the real hardware. On Windows they have not been tried on a real PC yet: reports are welcome in issue #3.
