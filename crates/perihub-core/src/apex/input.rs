@@ -22,6 +22,10 @@ use super::ZONES;
 use super::keys::zone_of;
 use crate::error::Result;
 
+/// Raw Input device names contain the USB ids, e.g. `\\?\HID#VID_1038&PID_1622&MI_00#…`.
+#[cfg(windows)]
+const APEX: &str = "VID_1038&PID_1622";
+
 /// How often the reading threads check whether they should stop.
 #[cfg(not(windows))]
 const READ_TIMEOUT_MS: i32 = 200;
@@ -97,7 +101,7 @@ pub struct KeyWatcher {
     shared: Arc<Mutex<Shared>>,
     stop: Arc<AtomicBool>,
     #[cfg(windows)]
-    thread_id: u32,
+    _keys: crate::rawinput::Subscription,
 }
 
 impl KeyWatcher {
@@ -109,8 +113,18 @@ impl KeyWatcher {
         #[cfg(windows)]
         {
             let _ = (boot, bitmap);
-            let thread_id = raw_input::spawn(shared.clone())?;
-            Ok(Self { shared, stop, thread_id })
+            // A held key repeats its event: only changes to the held keys matter.
+            let (held, target) = (Mutex::new(std::collections::HashSet::new()), shared.clone());
+            let keys = crate::rawinput::subscribe(APEX, move |key| {
+                let mut held = held.lock().unwrap();
+                let changed = if key.released { held.remove(&key.usage) } else { held.insert(key.usage) };
+                if changed {
+                    let mut keys = Pressed::default();
+                    held.iter().for_each(|&u| keys.set(u));
+                    target.lock().unwrap().update(0, keys);
+                }
+            })?;
+            Ok(Self { shared, stop, _keys: keys })
         }
         #[cfg(not(windows))]
         {
@@ -138,9 +152,8 @@ impl KeyWatcher {
 
 impl Drop for KeyWatcher {
     fn drop(&mut self) {
+        // On Windows dropping the subscription also stops the keys.
         self.stop.store(true, Ordering::SeqCst);
-        #[cfg(windows)]
-        raw_input::stop(self.thread_id);
     }
 }
 
@@ -161,7 +174,7 @@ fn read_loop(dev: HidDevice, parse: fn(&[u8]) -> Pressed, interface: usize, shar
 /// The key left of Enter on ISO boards has the same scan code as the ANSI backslash.
 #[cfg(any(windows, test))]
 #[rustfmt::skip]
-fn scan_code_usage(code: u16, e0: bool) -> Option<u8> {
+pub(crate) fn scan_code_usage(code: u16, e0: bool) -> Option<u8> {
     Some(match (e0, code) {
         (false, 0x01) => 0x29,
         (false, 0x02..=0x0A) => 0x1E + (code - 0x02) as u8, // 1–9
@@ -208,150 +221,6 @@ pub fn usage_scan_code(usage: u8) -> Option<(u16, bool)> {
         .into_iter()
         .flat_map(|e0| (1..0x80).map(move |code| (code, e0)))
         .find(|&(code, e0)| scan_code_usage(code, e0) == Some(usage))
-}
-
-/// Windows: the keyboard's keys through Raw Input, on a thread with a hidden message-only window.
-/// Only keys from the Apex 3 TKL are used: Raw Input tells which device each key comes from.
-#[cfg(windows)]
-mod raw_input {
-    use std::collections::{HashMap, HashSet};
-    use std::ffi::c_void;
-    use std::mem::size_of;
-    use std::ptr::{null, null_mut};
-    use std::sync::mpsc;
-    use std::sync::{Arc, Mutex};
-    use std::thread;
-
-    use windows_sys::Win32::Foundation::HANDLE;
-    use windows_sys::Win32::System::Threading::GetCurrentThreadId;
-    use windows_sys::Win32::UI::Input::{
-        GetRawInputData, GetRawInputDeviceInfoW, HRAWINPUT, RAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER, RID_INPUT,
-        RIDEV_INPUTSINK, RIDEV_REMOVE, RIDI_DEVICENAME, RIM_TYPEKEYBOARD, RegisterRawInputDevices,
-    };
-    use windows_sys::Win32::UI::WindowsAndMessaging::{
-        CreateWindowExW, DestroyWindow, DispatchMessageW, GetMessageW, HWND_MESSAGE, MSG, PostThreadMessageW,
-        RI_KEY_BREAK, RI_KEY_E0, WM_INPUT, WM_QUIT,
-    };
-
-    use super::{Pressed, Shared, scan_code_usage};
-    use crate::error::{Error, Result};
-
-    /// Raw Input device names contain the USB IDs, e.g. `\\?\HID#VID_1038&PID_1622&MI_00#…`.
-    const APEX: &str = "VID_1038&PID_1622";
-    const GENERIC_DESKTOP: u16 = 0x01;
-    const KEYBOARD: u16 = 0x06;
-
-    /// Starts the thread and returns its id, used to stop it.
-    pub fn spawn(shared: Arc<Mutex<Shared>>) -> Result<u32> {
-        let (started_tx, started_rx) = mpsc::channel();
-        thread::Builder::new().name("perihub-keys".into()).spawn(move || run(&shared, &started_tx))?;
-        started_rx.recv().map_err(|_| Error::Invalid("the key thread stopped".into()))?
-    }
-
-    pub fn stop(thread_id: u32) {
-        // SAFETY: posting a message to a thread id has no memory effects.
-        unsafe { PostThreadMessageW(thread_id, WM_QUIT, 0, 0) };
-    }
-
-    fn register(window: windows_sys::Win32::Foundation::HWND, flags: u32) -> bool {
-        let device =
-            RAWINPUTDEVICE { usUsagePage: GENERIC_DESKTOP, usUsage: KEYBOARD, dwFlags: flags, hwndTarget: window };
-        // SAFETY: one valid RAWINPUTDEVICE with its size.
-        unsafe { RegisterRawInputDevices(&device, 1, size_of::<RAWINPUTDEVICE>() as u32) != 0 }
-    }
-
-    fn run(shared: &Mutex<Shared>, started: &mpsc::Sender<Result<u32>>) {
-        let class: Vec<u16> = "STATIC\0".encode_utf16().collect();
-        // SAFETY: a message-only window of a system class, owned and destroyed by this thread.
-        let window = unsafe {
-            CreateWindowExW(0, class.as_ptr(), null(), 0, 0, 0, 0, 0, HWND_MESSAGE, null_mut(), null_mut(), null())
-        };
-        if window.is_null() {
-            let _ = started.send(Err(std::io::Error::last_os_error().into()));
-            return;
-        }
-        // RIDEV_INPUTSINK: keys arrive even while another app is in the foreground. This replaces the
-        // keyboard registration of the window library, which PeriHub does not use.
-        if !register(window, RIDEV_INPUTSINK) {
-            let _ = started.send(Err(std::io::Error::last_os_error().into()));
-            // SAFETY: the window belongs to this thread.
-            unsafe { DestroyWindow(window) };
-            return;
-        }
-        // SAFETY: no arguments.
-        let _ = started.send(Ok(unsafe { GetCurrentThreadId() }));
-
-        let mut is_apex: HashMap<usize, bool> = HashMap::new();
-        let mut held: HashSet<(u16, bool)> = HashSet::new();
-        // SAFETY: MSG is plain data, filled in by GetMessageW.
-        let mut msg: MSG = unsafe { std::mem::zeroed() };
-        // SAFETY: standard message loop on this thread; ends with WM_QUIT from `stop`.
-        while unsafe { GetMessageW(&mut msg, null_mut(), 0, 0) } > 0 {
-            if msg.message == WM_INPUT
-                && let Some((code, e0, released)) = apex_key(msg.lParam as HRAWINPUT, &mut is_apex)
-            {
-                // A held key repeats its event: only changes to the held keys matter.
-                let changed = if released { held.remove(&(code, e0)) } else { held.insert((code, e0)) };
-                if changed {
-                    let mut keys = Pressed::default();
-                    held.iter().filter_map(|&(c, e)| scan_code_usage(c, e)).for_each(|u| keys.set(u));
-                    shared.lock().unwrap().update(0, keys);
-                }
-            }
-            // WM_INPUT must reach the default window procedure, which frees the input data.
-            // SAFETY: the message came from GetMessageW.
-            unsafe { DispatchMessageW(&msg) };
-        }
-        register(null_mut(), RIDEV_REMOVE);
-        // SAFETY: the window belongs to this thread.
-        unsafe { DestroyWindow(window) };
-    }
-
-    /// Scan code, extended prefix and release flag of a key from the Apex; `None` for other devices.
-    fn apex_key(handle: HRAWINPUT, is_apex: &mut HashMap<usize, bool>) -> Option<(u16, bool, bool)> {
-        let mut input = RAWINPUT::default();
-        let mut size = size_of::<RAWINPUT>() as u32;
-        // SAFETY: the buffer is a RAWINPUT and `size` is its size.
-        let read = unsafe {
-            GetRawInputData(
-                handle,
-                RID_INPUT,
-                (&raw mut input).cast::<c_void>(),
-                &mut size,
-                size_of::<RAWINPUTHEADER>() as u32,
-            )
-        };
-        if read == u32::MAX || input.header.dwType != RIM_TYPEKEYBOARD {
-            return None;
-        }
-        let device = input.header.hDevice;
-        let apex = *is_apex
-            .entry(device as usize)
-            .or_insert_with(|| device_name(device).is_some_and(|name| name.to_uppercase().contains(APEX)));
-        if !apex {
-            return None;
-        }
-        // SAFETY: dwType says the union holds keyboard data.
-        let keyboard = unsafe { input.data.keyboard };
-        let flags = u32::from(keyboard.Flags);
-        Some((keyboard.MakeCode, flags & RI_KEY_E0 != 0, flags & RI_KEY_BREAK != 0))
-    }
-
-    fn device_name(device: HANDLE) -> Option<String> {
-        let mut len = 0u32;
-        // SAFETY: first call only asks for the length; the second fills a buffer of that length.
-        unsafe {
-            GetRawInputDeviceInfoW(device, RIDI_DEVICENAME, null_mut(), &mut len);
-            if len == 0 {
-                return None;
-            }
-            let mut name = vec![0u16; len as usize];
-            if GetRawInputDeviceInfoW(device, RIDI_DEVICENAME, name.as_mut_ptr().cast(), &mut len) == u32::MAX {
-                return None;
-            }
-            Some(String::from_utf16_lossy(&name))
-        }
-    }
 }
 
 #[cfg(test)]

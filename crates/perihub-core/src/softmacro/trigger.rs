@@ -2,8 +2,9 @@
 //!
 //! Linux: PeriHub opens the mouse's HID interface a second time and reads its keyboard reports
 //! (report 1: modifiers, a reserved byte, up to six keys), which only carry what the mouse sends:
-//! its buttons' key bindings and macros, never what is typed on a keyboard. Only presses of the
-//! trigger keys are acted on; nothing else is kept.
+//! its buttons' key bindings and macros, never what is typed on a keyboard. Windows keeps the
+//! mouse's keyboard to itself, so the keys come from Raw Input, filtered to the mouse
+//! (see `crate::rawinput`). Only presses of the trigger keys are acted on; nothing else is kept.
 
 use std::ffi::CString;
 use std::sync::Arc;
@@ -30,18 +31,33 @@ fn new_presses(report: &[u8], held: &mut Vec<u8>) -> Vec<u8> {
 pub struct MouseTrigger {
     pub path: CString,
     stop: Arc<AtomicBool>,
+    #[cfg(windows)]
+    _keys: crate::rawinput::Subscription,
 }
 
 impl MouseTrigger {
-    pub fn start(path: CString, on_press: impl Fn(u8) + Send + 'static) -> Result<Self> {
+    /// `path`: the mouse's HID interface that carries its keyboard reports (Linux);
+    /// `product_id`: its USB product id, to recognize its keys (Windows).
+    pub fn start(path: CString, product_id: u16, on_press: impl Fn(u8) + Send + 'static) -> Result<Self> {
         let stop = Arc::new(AtomicBool::new(false));
         #[cfg(windows)]
         {
-            let _ = (on_press, stop, path);
-            Err(crate::Error::Invalid("software macros are not available on Windows yet".into()))
+            // A held key repeats its event: only a key going down counts.
+            let held = std::sync::Mutex::new(Vec::new());
+            let keys = crate::rawinput::subscribe(&format!("VID_046D&PID_{product_id:04X}"), move |key| {
+                let mut held = held.lock().unwrap();
+                if key.released {
+                    held.retain(|&k| k != key.usage);
+                } else if TRIGGER_KEYS.contains(&key.usage) && !held.contains(&key.usage) {
+                    held.push(key.usage);
+                    on_press(key.usage);
+                }
+            })?;
+            Ok(Self { path, stop, _keys: keys })
         }
         #[cfg(not(windows))]
         {
+            let _ = product_id;
             let dev = hidapi::HidApi::new()?.open_path(&path)?;
             let flag = stop.clone();
             std::thread::Builder::new().name("perihub-triggers".into()).spawn(move || {

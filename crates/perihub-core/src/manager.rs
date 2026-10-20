@@ -275,10 +275,12 @@ impl Manager {
         self.slots.lock().unwrap().keyboard.as_ref().map(|(w, _)| w.clone()).ok_or(Error::NotConnected)
     }
 
-    /// Path of the open mouse's HID interface (the one that also carries its keyboard reports).
-    pub fn mouse_path(&self) -> Option<CString> {
+    /// The open mouse: path of its HID interface (the one that also carries its keyboard reports)
+    /// and its USB product id.
+    pub fn mouse_id(&self) -> Option<(CString, u16)> {
         let slots = self.slots.lock().unwrap();
-        slots.mouse.as_ref().and(slots.mouse_path.clone())
+        let (_, info) = slots.mouse.as_ref()?;
+        Some((slots.mouse_path.clone()?, info.product_id))
     }
 
     pub fn mouse(&self) -> Result<Worker<MouseTask>> {

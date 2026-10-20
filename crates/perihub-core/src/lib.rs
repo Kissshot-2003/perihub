@@ -12,6 +12,8 @@ pub mod hidpp;
 pub mod keyboard;
 pub mod manager;
 pub mod mouse;
+#[cfg(windows)]
+pub mod rawinput;
 pub mod softmacro;
 pub mod worker;
 

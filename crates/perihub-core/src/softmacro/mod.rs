@@ -164,17 +164,18 @@ impl SoftMacroEngine {
     }
 
     /// Follows the mouse: reads its trigger keys while at least one macro exists. `mouse` is the
-    /// path of its HID interface that also carries its keyboard reports, or `None` without a mouse.
-    pub fn watch_mouse(self: &Arc<Self>, mouse: Option<CString>) {
+    /// path of its HID interface that also carries its keyboard reports and its USB product id,
+    /// or `None` without a mouse.
+    pub fn watch_mouse(self: &Arc<Self>, mouse: Option<(CString, u16)>) {
         let wanted = mouse.filter(|_| !self.macros.lock().unwrap().is_empty());
         let mut reader = self.reader.lock().unwrap();
-        if reader.as_ref().filter(|r| r.is_alive()).map(|r| &r.path) == wanted.as_ref() {
+        if reader.as_ref().filter(|r| r.is_alive()).map(|r| &r.path) == wanted.as_ref().map(|(path, _)| path) {
             return;
         }
         *reader = None;
-        if let Some(path) = wanted {
+        if let Some((path, product_id)) = wanted {
             let engine = Arc::downgrade(self);
-            match trigger::MouseTrigger::start(path, move |key| {
+            match trigger::MouseTrigger::start(path, product_id, move |key| {
                 if let Some(engine) = engine.upgrade() {
                     engine.pressed(key);
                 }

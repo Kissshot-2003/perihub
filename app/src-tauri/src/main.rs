@@ -75,14 +75,14 @@ fn main() {
                         profiles.devices_changed(status);
                     }
                     if let Some((soft, manager)) = soft_listener.get() {
-                        soft.watch_mouse(manager.mouse_path());
+                        soft.watch_mouse(manager.mouse_id());
                     }
                     let _ = handle.emit("devices-changed", status);
                 }),
             );
             let soft = SoftMacroEngine::new(config.software_macros.clone());
             let _ = soft_slot.set((soft.clone(), manager.clone()));
-            soft.watch_mouse(manager.mouse_path());
+            soft.watch_mouse(manager.mouse_id());
             let profiles =
                 AppProfileEngine::new(manager.clone(), config.app_profiles.clone(), config.lighting_presets.clone());
             let _ = profiles_slot.set(profiles.clone());

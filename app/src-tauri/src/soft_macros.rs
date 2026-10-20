@@ -43,7 +43,7 @@ fn store(state: &AppState, change: impl FnOnce(&mut Vec<SoftwareMacro>) -> Resul
     config.save().map_err(|e| e.to_string())?;
     state.soft.set_macros(config.software_macros.clone());
     // Reading the mouse's trigger keys starts with the first macro and stops with the last one.
-    state.soft.watch_mouse(state.manager.mouse_path());
+    state.soft.watch_mouse(state.manager.mouse_id());
     Ok(())
 }
 
