@@ -110,9 +110,17 @@
     api.setBrightness(level).then(() => (error = null), (e) => (error = errorText(e)));
   }, 60);
 
+  /** Lighting the keyboard already shows: sending it again would restart the effect (a visible
+   * glitch) and undo a lighting set by an app profile. */
+  let applied = "";
+
   $effect(() => {
     const l = lighting;
-    if (loaded) pushLighting(l);
+    const json = JSON.stringify(l);
+    if (loaded && json !== applied) {
+      applied = json;
+      pushLighting(l);
+    }
   });
 
   /** Shows a lighting in the editor (which then applies it). */
@@ -153,6 +161,7 @@
   onMount(async () => {
     const config = await api.keyboardConfig();
     show(config.lighting);
+    applied = JSON.stringify(lighting);
     saved = await api.presets();
     brightness = config.brightness;
     // Brightness can also be changed from the keyboard (SteelSeries + F11/F12): read the actual value.
