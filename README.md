@@ -297,7 +297,7 @@ The UI is in English. More languages are on the roadmap.
 
 ## Known limitations
 
-- **Windows**: tested on a real Windows 11 PC: keyboard lighting, reactive lighting, key remapping, mouse profiles, app profiles, tray icon, backups and the update check. Autostart has been checked only by running its command, not with a real login. Reports from other setups are welcome.
+- **Windows**: tested on a real Windows 11 PC: keyboard lighting, reactive lighting, key remapping, mouse profiles, app profiles, tray icon, backups and the update check. Autostart has been checked only by running its command, not with a real login. Software macros and the G HUB warning, new in 0.4.0, have not been tried on a real Windows PC yet. Reports are welcome in [issue #3](https://github.com/hex-dump/perihub/issues/3).
 - **Logitech wireless mice** work only over their USB cable: LIGHTSPEED receivers are not supported yet.
 - **App profiles** detect the app in focus on Windows and on Hyprland only. They switch lighting and mouse profiles, not key mappings, because changing those writes the keyboard's memory.
 - **Not yet available**:
