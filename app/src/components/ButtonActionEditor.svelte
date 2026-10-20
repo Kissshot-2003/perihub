@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ButtonAction, KeyInfo, Macro } from "../lib/api";
   import { CONSUMER_KEYS, keyLabel, MODIFIERS, MOUSE_CLICKS, SPECIAL_FUNCTIONS } from "../lib/keys";
-  import { macroSummary } from "../lib/macros";
+  import { macroSummary, type MacroSource } from "../lib/macros";
   import MacroEditor from "./MacroEditor.svelte";
 
   interface Props {
@@ -9,11 +9,15 @@
     keys: KeyInfo[];
     /** Name of the button, for the macro editor. */
     name: string;
+    /** Macros on other buttons, to start from. */
+    library?: MacroSource[];
+    /** Bytes free for new macros in the mouse. */
+    macroSpace?: number;
     allowDisabledHint?: boolean;
     onchange: (action: ButtonAction) => void;
   }
 
-  let { action, keys, name, allowDisabledHint = false, onchange }: Props = $props();
+  let { action, keys, name, library = [], macroSpace, allowDisabledHint = false, onchange }: Props = $props();
   /** Macro open in the editor. */
   let editing = $state<Macro | null>(null);
   let kindSelect: HTMLSelectElement;
@@ -117,7 +121,7 @@
 </div>
 
 {#if editing}
-  <MacroEditor content={editing} {keys} button={name} onsave={saveMacro} oncancel={cancelMacro} />
+  <MacroEditor content={editing} {keys} {library} space={macroSpace} button={name} onsave={saveMacro} oncancel={cancelMacro} />
 {/if}
 
 <style>

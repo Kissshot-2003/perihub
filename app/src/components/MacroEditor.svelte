@@ -4,7 +4,8 @@
   import type { KeyInfo, Macro, MacroKind, MacroStep } from "../lib/api";
   import { CONSUMER_KEYS, keyLabel, MOUSE_CLICKS } from "../lib/keys";
   import {
-    DEFAULT_DELAY_MS, MACRO_KINDS, MAX_DELAY_MS, MODIFIER_KEYS, recordedStep, releaseOf, stepLabel,
+    DEFAULT_DELAY_MS, MACRO_KINDS, MAX_DELAY_MS, MODIFIER_KEYS, macroSize, recordedStep, releaseOf, stepLabel,
+    type MacroSource,
   } from "../lib/macros";
 
   interface Props {
@@ -12,11 +13,15 @@
     keys: KeyInfo[];
     /** Name of the button the macro is for. */
     button: string;
+    /** Macros on other buttons, to start from. */
+    library?: MacroSource[];
+    /** Bytes free for new macros in the mouse. */
+    space?: number;
     onsave: (content: Macro) => void;
     oncancel: () => void;
   }
 
-  let { content, keys, button, onsave, oncancel }: Props = $props();
+  let { content, keys, button, library = [], space, onsave, oncancel }: Props = $props();
 
   const initial: Macro = untrack(() => JSON.parse(JSON.stringify(content)));
   let kind = $state<MacroKind>(initial.kind);
@@ -81,6 +86,19 @@
     }
   }
 
+  /** Replaces the macro with a copy of one from another button. */
+  function copyFrom(e: Event) {
+    const select = e.target as HTMLSelectElement;
+    const source = library[Number(select.value)];
+    select.value = "";
+    if (!source) return;
+    const copy: Macro = JSON.parse(JSON.stringify(source.content));
+    kind = copy.kind;
+    press = copy.press;
+    release = copy.release;
+    part = "press";
+  }
+
   function move(steps: MacroStep[], i: number, by: number) {
     const [step] = steps.splice(i, 1);
     steps.splice(i + by, 0, step);
@@ -142,6 +160,8 @@
     return empty ? "Add at least one step." : null;
   });
 
+  const size = $derived(macroSize({ kind, press, release: kind === "sequence" ? release : [] }));
+
   /** Keys and buttons still down when the macro ends. */
   const leftDown = $derived.by(() => {
     const down: MacroStep[] = [];
@@ -197,7 +217,15 @@
 
 <div class="backdrop">
   <div class="dialog col" role="dialog" aria-modal="true" aria-labelledby="macro-title">
-    <h2 id="macro-title">Macro for “{button}”</h2>
+    <div class="row wrap">
+      <h2 id="macro-title" class="grow">Macro for “{button}”</h2>
+      {#if library.length}
+        <select class="copy" value="" onchange={copyFrom} disabled={recording}>
+          <option value="" disabled>Copy a macro from another button…</option>
+          {#each library as source, i (i)}<option value={String(i)}>{source.label}</option>{/each}
+        </select>
+      {/if}
+    </div>
 
     <div class="col tight">
       <div class="segmented">
@@ -302,7 +330,11 @@
       <button onclick={oncancel}>Cancel</button>
       <button class="primary" disabled={!!problem} onclick={save}>Done</button>
     </footer>
-    <span class="muted small">The macro is stored in the mouse with “Save to mouse” and works without PeriHub.</span>
+    <span class="muted small">
+      The macro is stored in the mouse with “Save to mouse” and works without PeriHub. It takes {size} bytes{#if space !== undefined};
+        about {space} bytes are free in the mouse{/if}.
+      {#if space !== undefined && size > space}<b class="warn">It may not fit: shorten it or remove macros you no longer use.</b>{/if}
+    </span>
   </div>
 </div>
 
@@ -330,6 +362,10 @@
 
   .tight {
     gap: 6px;
+  }
+
+  .copy {
+    max-width: 320px;
   }
 
   .segmented {

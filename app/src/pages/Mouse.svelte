@@ -209,7 +209,8 @@
     {#if tab === "performance"}
       <MousePerformance {info} bind:settings={draft} onpreview={() => (previewing = true)} />
     {:else if tab === "buttons"}
-      <MouseButtons {info} bind:settings={draft} />
+      <MouseButtons {info} bind:settings={draft} profiles={mouse.profiles} profileNumber={selected}
+        macroSpace={mouse.macro_space} />
     {:else}
       <MouseLighting {info} bind:settings={draft} onpreview={() => (previewing = true)} />
     {/if}

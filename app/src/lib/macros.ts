@@ -1,5 +1,5 @@
-import type { Macro, MacroKind, MacroStep } from "./api";
-import { CONSUMER_KEYS, keyLabel, MOUSE_CLICKS } from "./keys";
+import type { Macro, MacroKind, MacroStep, MouseProfile, ProfileSettings } from "./api";
+import { CONSUMER_KEYS, keyLabel, mouseButtonName, MOUSE_CLICKS } from "./keys";
 
 /** Kinds offered in the editor: "forever" exists in some mice's memory but cannot be stopped. */
 export const MACRO_KINDS: { kind: MacroKind; label: string; hint: string }[] = [
@@ -67,6 +67,15 @@ export function stepLabel(s: MacroStep): string {
   }
 }
 
+/** Bytes a macro takes in the mouse's memory (a long one also needs a few bytes to continue in
+ * another sector). */
+export function macroSize(m: Macro): number {
+  const step = (s: MacroStep) => (s.type === "noop" ? 1 : s.type === "wheel" ? 2 : 3);
+  const steps = [...m.press, ...m.release].reduce((sum, s) => sum + step(s), 0);
+  // The end command, and the release or repeat command between the parts.
+  return steps + 1 + (m.kind === "once" ? 0 : 1);
+}
+
 /** One line for the buttons list, e.g. "Repeat while holding: Ctrl+C V · 120 ms". */
 export function macroSummary(m: Macro | null): string {
   if (!m) return "Macro that PeriHub cannot read";
@@ -83,6 +92,33 @@ export function macroSummary(m: Macro | null): string {
   const shown = pressed.length > 10 ? [...pressed.slice(0, 10), "…"] : pressed;
   const ms = steps.reduce((sum, s) => sum + (s.type === "delay" ? s.ms : 0), 0);
   return `${KIND_LABELS[m.kind]}: ${shown.join(" ") || "no keys"} · ${ms} ms`;
+}
+
+/** A macro already on a button, offered as a starting point in the editor. */
+export interface MacroSource {
+  label: string;
+  content: Macro;
+}
+
+/** Readable macros on every button of every profile, each content once. `current` replaces the
+ * saved version of the profile being edited, so its unsaved macros are offered too. */
+export function macroLibrary(productId: number, profiles: MouseProfile[], current: MouseProfile): MacroSource[] {
+  const sources: MacroSource[] = [];
+  const seen = new Set<string>();
+  for (const profile of profiles.map((p) => (p.number === current.number ? current : p))) {
+    const layers: [string, ProfileSettings["buttons"]][] = [["", profile.settings.buttons], [" (G-Shift)", profile.settings.gshift_buttons]];
+    for (const [layer, buttons] of layers) {
+      buttons.forEach((action, i) => {
+        if (action.type !== "macro" || !action.content) return;
+        const key = JSON.stringify(action.content);
+        if (seen.has(key)) return;
+        seen.add(key);
+        const where = `Profile ${profile.number} · ${mouseButtonName(productId, i)}${layer}`;
+        sources.push({ label: `${where} · ${macroSummary(action.content)}`, content: action.content });
+      });
+    }
+  }
+  return sources;
 }
 
 // ---- Recording ----

@@ -55,6 +55,8 @@ pub struct MouseState {
     pub active_dpi_index: u8,
     pub current_dpi: u16,
     pub profiles: Vec<MouseProfile>,
+    /// Bytes free for new macros: the sectors that no profile and no macro use.
+    pub macro_space: u32,
 }
 
 pub struct MouseTask {
@@ -203,18 +205,35 @@ impl MouseTask {
         };
         let mut profiles = Vec::new();
         let mut macro_sectors = HashMap::new();
+        let mut used = self.reserved_sectors(&directory);
         for number in 1..=self.profile_count() {
             let sector = self.read_profile_sector(number)?;
             let mut settings = ProfileSettings::parse(&sector, self.info.onboard.button_count as usize)?;
             self.read_macros(&mut settings, &mut macro_sectors)?;
+            for (s, o) in settings.macro_addresses() {
+                used.extend(self.macro_sectors(&mut macro_sectors, s, o)?);
+            }
             profiles.push(MouseProfile { number, enabled: enabled[number as usize - 1], settings });
         }
+        let free = (self.profile_count() + 1..self.info.onboard.sector_count).filter(|s| !used.contains(s)).count();
         Ok(MouseState {
             active_profile: self.read_active_profile()?,
             active_dpi_index: self.dev.active_dpi_index()?,
             current_dpi: self.dev.sensor_dpi(0)?.0,
             profiles,
+            macro_space: free as u32 * (self.sector_size() as u32 - 2),
         })
+    }
+
+    /// The directory and the profile sectors, by number and as the directory lists them:
+    /// macros never go there.
+    fn reserved_sectors(&self, directory: &[u8]) -> HashSet<u8> {
+        let mut reserved: HashSet<u8> = (0..=self.profile_count()).collect();
+        if profile::crc_is_valid(directory) {
+            let listed = profile::directory_sectors(directory, self.profile_count() as usize);
+            reserved.extend(listed.into_iter().filter_map(|s| u8::try_from(s).ok()));
+        }
+        reserved
     }
 
     /// User profile sector; if it was never written (invalid CRC), the factory one applies.
@@ -269,20 +288,17 @@ impl MouseTask {
         Ok(())
     }
 
-    /// Gives every macro of the profile being saved an address. A macro already in the mouse with the same
-    /// content keeps its place; the others are packed into sectors that no profile uses, returned
-    /// to be written before the profile. Sectors in use, including those of the macros this save
-    /// replaces, are never overwritten: if writing stops halfway, every profile still points to
-    /// intact macros. Replaced macros free their sectors for the next save.
+    /// Gives every macro of the profile being saved an address. A macro whose content is already in
+    /// the mouse, on any button of any profile, uses that copy; the others are packed into sectors
+    /// that no profile uses, returned to be written before the profile. Sectors in use, including
+    /// those of the macros this save replaces, are never overwritten: if writing stops halfway,
+    /// every profile still points to intact macros. Replaced macros free their sectors for the
+    /// next save.
     fn place_macros(&mut self, settings: &mut ProfileSettings) -> Result<Vec<(u8, Vec<u8>)>> {
         let buttons = self.info.onboard.button_count as usize;
         let mut cache = HashMap::new();
-        let mut used: HashSet<u8> = (0..=self.profile_count()).collect();
         let directory = self.dev.read_sector(0, self.sector_size())?;
-        if profile::crc_is_valid(&directory) {
-            let listed = profile::directory_sectors(&directory, self.profile_count() as usize);
-            used.extend(listed.into_iter().filter_map(|s| u8::try_from(s).ok()));
-        }
+        let mut used = self.reserved_sectors(&directory);
         // Macros in the mouse now.
         let mut existing = Vec::new();
         for n in 1..=self.profile_count() {
@@ -309,7 +325,11 @@ impl MouseTask {
                 }
                 (Some(content), _) => {
                     content.validate()?;
-                    new.push(action);
+                    // The same macro on another button or profile is shared, not written twice.
+                    match existing.iter().find(|(_, old)| old.as_ref() == Some(&*content)) {
+                        Some((address, _)) => (*sector, *offset) = *address,
+                        None => new.push(action),
+                    }
                 }
             }
         }

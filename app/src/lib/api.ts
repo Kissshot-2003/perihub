@@ -158,6 +158,8 @@ export interface MouseState {
   active_dpi_index: number;
   current_dpi: number;
   profiles: MouseProfile[];
+  /** Bytes free for new macros in the mouse's memory. */
+  macro_space: number;
 }
 
 export interface LedZone {
