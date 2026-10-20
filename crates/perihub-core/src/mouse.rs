@@ -350,7 +350,8 @@ impl MouseTask {
         }
         let refs: Vec<(&str, &[u8])> = files.iter().map(|(n, d)| (n.as_str(), d.as_slice())).collect();
         let dir = write_backup(&self.model.backup_dir(), label, &refs)?;
-        log::info!("mouse backup saved to {}", dir.display());
+        // The folder name only: the full path would put the user's name in the log file.
+        log::info!("mouse backup saved: {}", dir.file_name().unwrap_or_default().to_string_lossy());
         Ok(())
     }
 

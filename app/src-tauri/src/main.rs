@@ -4,6 +4,7 @@
 mod autostart;
 mod commands;
 mod key_access;
+mod logfile;
 mod updates;
 
 use std::sync::{Arc, Mutex, OnceLock};
@@ -41,7 +42,11 @@ fn show_main(app: &AppHandle) {
 }
 
 fn main() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // PeriHub's own messages at info level, other libraries only when something goes wrong.
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn,perihub=info,perihub_core=info"))
+        .target(env_logger::Target::Pipe(Box::new(logfile::LogWriter::open())))
+        .init();
+    log::info!("PeriHub {} on {} {}", env!("CARGO_PKG_VERSION"), std::env::consts::OS, std::env::consts::ARCH);
     let hidden_requested = std::env::args().any(|a| a == HIDDEN_ARG);
 
     tauri::Builder::default()
@@ -159,6 +164,7 @@ fn main() {
             commands::app_get_settings,
             commands::app_set_settings,
             commands::app_quit,
+            commands::app_open_log_folder,
             updates::update_check,
             updates::update_install,
         ])

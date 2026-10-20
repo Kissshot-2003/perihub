@@ -205,6 +205,8 @@ export interface AppSettings {
   check_updates: boolean;
   /** This build can update itself (Windows). */
   updates_supported: boolean;
+  /** Folder of the log file. */
+  log_dir: string;
 }
 
 export interface UpdateInfo {
@@ -259,6 +261,7 @@ export const api = {
   appSettings: () => invoke<AppSettings>("app_get_settings"),
   setAppSettings: (settings: AppSettings) => invoke<AppSettings>("app_set_settings", { settings }),
   quit: () => invoke<void>("app_quit"),
+  openLogFolder: () => invoke<void>("app_open_log_folder"),
   checkUpdate: () => invoke<UpdateInfo | null>("update_check"),
   installUpdate: () => invoke<void>("update_install"),
 };

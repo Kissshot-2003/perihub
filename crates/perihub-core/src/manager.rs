@@ -143,6 +143,7 @@ impl Manager {
             let mut slots = self.slots.lock().unwrap();
             if slots.keyboard.as_ref().is_some_and(|(w, _)| !w.is_alive() || keyboard.is_none()) {
                 slots.keyboard = None;
+                log::info!("keyboard disconnected");
                 slots.key_interfaces = KeyInterfaces::default();
                 changed = true;
             }
@@ -158,6 +159,7 @@ impl Manager {
             let error = match result {
                 Ok(task) => {
                     let info = task.info.clone();
+                    log::info!("keyboard connected: {}, firmware {}", info.name, info.firmware);
                     slots.keyboard = Some((Worker::spawn("perihub-keyboard", task), info));
                     slots.key_interfaces = key_interfaces;
                     None
@@ -165,6 +167,9 @@ impl Manager {
                 Err(error) => Some(open_error_message(error)),
             };
             changed |= slots.keyboard.is_some() || slots.keyboard_error != error;
+            if let Some(message) = error.as_ref().filter(|_| slots.keyboard_error != error) {
+                log::warn!("keyboard: {message}");
+            }
             slots.keyboard_error = error;
         }
 
@@ -172,7 +177,10 @@ impl Manager {
         let candidate = {
             let mut slots = self.slots.lock().unwrap();
             if slots.mouse.as_ref().is_some_and(|(w, _)| !w.is_alive()) || !connected(&slots.mouse_path) {
-                changed |= slots.mouse.take().is_some();
+                if slots.mouse.take().is_some() {
+                    log::info!("mouse disconnected");
+                    changed = true;
+                }
                 slots.mouse_path = None;
             }
             if !connected(&slots.mouse_failed) {
@@ -198,6 +206,17 @@ impl Manager {
                     let mouse = task.info.clone();
                     slots.mouse_host_mode = Some(task.host_mode_flag());
                     slots.reported_host_mode = mouse.host_mode;
+                    log::info!(
+                        "mouse connected: {} ({}), firmware {}",
+                        mouse.model,
+                        if mouse.verified { "tested" } else { "read-only" },
+                        mouse
+                            .firmware
+                            .iter()
+                            .map(|f| format!("{} {}", f.name, f.version))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
                     slots.mouse = Some((Worker::spawn("perihub-mouse", task), mouse));
                     slots.mouse_path = Some(info.path().to_owned());
                     None
@@ -210,6 +229,9 @@ impl Manager {
                 }
             };
             changed |= slots.mouse.is_some() || slots.mouse_error != error;
+            if let Some(message) = error.as_ref().filter(|_| slots.mouse_error != error) {
+                log::warn!("mouse: {message}");
+            }
             slots.mouse_error = error;
         }
         // The mouse's thread notices when another program takes the mouse or gives it back.

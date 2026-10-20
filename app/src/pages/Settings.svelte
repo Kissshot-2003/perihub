@@ -104,6 +104,20 @@
   </div>
 
   <div class="card col">
+    <h2>Problems</h2>
+    <p class="small">
+      If something does not work, open an issue on GitHub and attach <code>perihub.log</code>. It records devices
+      connecting, errors and updates, never your key presses or the apps you use.
+    </p>
+    {#if settings}
+      <div class="row wrap">
+        <code class="small">{settings.log_dir}</code>
+        <button onclick={() => api.openLogFolder().catch((e) => (error = errorText(e)))}>Open log folder</button>
+      </div>
+    {/if}
+  </div>
+
+  <div class="card col">
     <h2>Credits</h2>
     <p class="small">PeriHub {version}</p>
     <p class="muted small">

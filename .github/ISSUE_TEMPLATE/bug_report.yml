@@ -34,3 +34,11 @@ body:
       description: What you did, what you expected, and what the app showed (error messages are very helpful).
     validations:
       required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        From PeriHub 0.4.0: Settings → Problems → Open log folder, then attach `perihub.log` (drag it here) or paste the last lines.
+        It records devices connecting, errors and updates, never your key presses or the apps you use.
+      render: text

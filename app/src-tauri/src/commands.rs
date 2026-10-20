@@ -266,6 +266,9 @@ pub struct AppSettings {
     /// This build can update itself (Windows): read only.
     #[serde(default)]
     updates_supported: bool,
+    /// Folder of the log file: read only.
+    #[serde(default)]
+    log_dir: String,
 }
 
 #[tauri::command]
@@ -276,6 +279,7 @@ pub fn app_get_settings(app: AppHandle, state: State<'_, AppState>) -> AppSettin
         autostart: app.autolaunch().is_enabled().unwrap_or(false),
         check_updates: config.check_updates,
         updates_supported: crate::updates::SUPPORTED,
+        log_dir: crate::logfile::dir().display().to_string(),
     }
 }
 
@@ -293,6 +297,18 @@ pub fn app_set_settings(app: AppHandle, state: State<'_, AppState>, settings: Ap
     config.save().map_err(|e| e.to_string())?;
     drop(config);
     Ok(app_get_settings(app, state))
+}
+
+/// Opens the folder of the log file in the file manager, to attach it to a bug report.
+#[tauri::command]
+pub fn app_open_log_folder() -> CmdResult<()> {
+    let dir = crate::logfile::dir();
+    let program = if cfg!(windows) { "explorer" } else { "xdg-open" };
+    std::process::Command::new(program)
+        .arg(&dir)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("cannot open {}: {e}", dir.display()))
 }
 
 #[tauri::command]

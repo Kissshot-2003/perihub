@@ -16,6 +16,7 @@ perihub-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 log.workspace = true
+dirs.workspace = true
 env_logger = "0.11"
 tauri = { version = "2.12.4", features = ["tray-icon"] }
 tauri-plugin-autostart = "2.7.0"
