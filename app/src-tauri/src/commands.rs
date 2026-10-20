@@ -284,6 +284,9 @@ pub fn app_set_settings(app: AppHandle, state: State<'_, AppState>, settings: Ap
     let launcher = app.autolaunch();
     let result = if settings.autostart { launcher.enable() } else { launcher.disable() };
     result.map_err(|e| format!("autostart: {e}"))?;
+    if settings.autostart {
+        crate::autostart::quote_entry(&app);
+    }
     let mut config = state.config.lock().unwrap();
     config.start_hidden = settings.start_hidden;
     config.check_updates = settings.check_updates;

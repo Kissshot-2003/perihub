@@ -1,6 +1,7 @@
 // No console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod autostart;
 mod commands;
 mod key_access;
 mod updates;
@@ -29,7 +30,7 @@ pub fn watch_focus(app: &AppHandle, profiles: &Arc<AppProfileEngine>) {
 }
 
 /// Argument passed by autostart: start hidden in the system tray.
-const HIDDEN_ARG: &str = "--hidden";
+pub const HIDDEN_ARG: &str = "--hidden";
 
 fn show_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -52,6 +53,14 @@ fn main() {
             Some(vec![HIDDEN_ARG]),
         ))
         .setup(move |app| {
+            // Entries written by 0.3.0 and earlier are not quoted (see autostart.rs).
+            #[cfg(windows)]
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                if app.autolaunch().is_enabled().unwrap_or(false) {
+                    autostart::quote_entry(app.handle());
+                }
+            }
             let config = AppConfig::load();
             let handle = app.handle().clone();
             // The device listener starts before the app profiles exist: they are set right after.
