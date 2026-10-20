@@ -121,8 +121,30 @@
     await revertPreview();
   }
 
+  // The mouse's own buttons change the active profile and DPI: follow them while this page is in front.
+  const livePoll = setInterval(async () => {
+    if (!mouse || busy || document.hidden || !document.hasFocus()) return;
+    try {
+      const live = await api.mouseLive();
+      if (!mouse || busy) return;
+      // Show the new active profile if the one on screen was the active one and has no unsaved changes.
+      const follow = live.active_profile !== mouse.active_profile && selected === mouse.active_profile && !dirty && !previewing;
+      const next = mouse.profiles.find((p) => p.number === live.active_profile);
+      mouse.active_profile = live.active_profile;
+      mouse.active_dpi_index = live.active_dpi_index;
+      mouse.current_dpi = live.current_dpi;
+      if (follow && next) {
+        selected = next.number;
+        draft = clone(next.settings);
+      }
+    } catch {
+      /* mouse busy or unplugged: try again later */
+    }
+  }, 1000);
+
   // When leaving the page (for another section of the app), the mouse goes back to the saved settings.
   onDestroy(() => {
+    clearInterval(livePoll);
     if (previewing) api.revertPreview().catch(() => {});
   });
 </script>

@@ -132,6 +132,7 @@ fn main() {
             key_access::kb_grant_key_access,
             key_access::kb_revoke_key_access,
             commands::mouse_get_state,
+            commands::mouse_live,
             commands::mouse_save_profile,
             commands::mouse_restore_factory,
             commands::mouse_set_profile_enabled,

@@ -59,6 +59,14 @@ pub struct MouseState {
     pub macro_space: u32,
 }
 
+/// What the mouse's own buttons can change at any time: the active profile and DPI.
+#[derive(Debug, Clone, Serialize)]
+pub struct MouseLive {
+    pub active_profile: u8,
+    pub active_dpi_index: u8,
+    pub current_dpi: u16,
+}
+
 pub struct MouseTask {
     dev: HidppDevice,
     model: &'static MouseModel,
@@ -483,6 +491,15 @@ impl MouseTask {
 
     pub fn active_profile(&mut self) -> Result<u8> {
         self.read_active_profile()
+    }
+
+    /// Active profile and DPI, which the mouse's buttons change without PeriHub.
+    pub fn live(&mut self) -> Result<MouseLive> {
+        Ok(MouseLive {
+            active_profile: self.read_active_profile()?,
+            active_dpi_index: self.dev.active_dpi_index()?,
+            current_dpi: self.dev.sensor_dpi(0)?.0,
+        })
     }
 
     fn read_active_profile(&mut self) -> Result<u8> {

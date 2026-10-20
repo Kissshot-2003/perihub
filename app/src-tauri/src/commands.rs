@@ -7,7 +7,7 @@ use perihub_core::effects::KeyboardLighting;
 use perihub_core::focus::{self, FocusSupport};
 use perihub_core::hidpp::profile::{LedEffect, ProfileSettings};
 use perihub_core::keyboard::Keymap;
-use perihub_core::mouse::MouseState;
+use perihub_core::mouse::{MouseLive, MouseState};
 use perihub_core::{DeviceStatus, Error};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
@@ -169,6 +169,13 @@ pub fn kb_delete_preset(state: State<'_, AppState>, name: String) -> CmdResult<V
 pub async fn mouse_get_state(state: State<'_, AppState>) -> CmdResult<MouseState> {
     let manager = state.manager.clone();
     blocking(move || manager.mouse()?.call(|m| m.state())).await
+}
+
+/// Active profile and DPI, read again while the mouse page is open: the mouse's buttons change them.
+#[tauri::command]
+pub async fn mouse_live(state: State<'_, AppState>) -> CmdResult<MouseLive> {
+    let manager = state.manager.clone();
+    blocking(move || manager.mouse()?.call(|m| m.live())).await
 }
 
 #[tauri::command]

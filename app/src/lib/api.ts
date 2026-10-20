@@ -178,6 +178,13 @@ export interface MouseProfile {
   settings: ProfileSettings;
 }
 
+/** What the mouse's own buttons change: active profile and DPI. */
+export interface MouseLive {
+  active_profile: number;
+  active_dpi_index: number;
+  current_dpi: number;
+}
+
 export interface MouseState {
   active_profile: number;
   active_dpi_index: number;
@@ -270,6 +277,7 @@ export const api = {
   deletePreset: (name: string) => invoke<LightingPreset[]>("kb_delete_preset", { name }),
 
   mouseState: () => invoke<MouseState>("mouse_get_state"),
+  mouseLive: () => invoke<MouseLive>("mouse_live"),
   saveProfile: (number: number, settings: ProfileSettings) =>
     invoke<MouseState>("mouse_save_profile", { number, settings }),
   restoreFactory: (number: number) => invoke<MouseState>("mouse_restore_factory", { number }),
