@@ -51,14 +51,20 @@ jobs:
             $p = Start-Process $exe -ArgumentList $arguments -PassThru
             Start-Sleep 60
             $ids = Get-Tree $p.Id
-            $before = (Get-Process -Id $ids | Measure-Object { $_.TotalProcessorTime.TotalMilliseconds } -Sum).Sum
+            $cpu = { param($list) (Get-Process -Id $list -ErrorAction SilentlyContinue | Measure-Object { $_.TotalProcessorTime.TotalMilliseconds } -Sum).Sum }
+            $before = & $cpu $ids
+            $beforeMain = & $cpu @($p.Id)
             Start-Sleep 120
             $ids = Get-Tree $p.Id
-            $after = (Get-Process -Id $ids | Measure-Object { $_.TotalProcessorTime.TotalMilliseconds } -Sum).Sum
+            $after = & $cpu $ids
+            $afterMain = & $cpu @($p.Id)
             # "Memory" in Task Manager is the private working set.
-            $private = (Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $ids -contains $_.IDProcess } | Measure-Object WorkingSetPrivate -Sum).Sum
+            $perf = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $ids -contains $_.IDProcess }
+            $private = ($perf | Measure-Object WorkingSetPrivate -Sum).Sum
+            $privateMain = ($perf | Where-Object IDProcess -eq $p.Id).WorkingSetPrivate
             $names = (Get-Process -Id $ids | Group-Object ProcessName | ForEach-Object { "$($_.Count) $($_.Name)" }) -join ', '
-            "${label}: $($ids.Count) processes ($names), memory $([math]::Round($private / 1MB)) MB (private working set), CPU $([math]::Round(($after - $before) / 120000 * 100, 2))% of one core over 120 s" | Tee-Object -Append results.txt
+            $pct = { param($ms) [math]::Round($ms / 120000 * 100, 2) }
+            "${label}: $($ids.Count) processes ($names), memory $([math]::Round($private / 1MB)) MB (private working set; perihub.exe alone $([math]::Round($privateMain / 1MB)) MB), CPU $(& $pct ($after - $before))% of one core over 120 s (perihub.exe alone $(& $pct ($afterMain - $beforeMain))%, WebView2 $(& $pct (($after - $before) - ($afterMain - $beforeMain)))%)" | Tee-Object -Append results.txt
             Get-Process -Id $ids -ErrorAction SilentlyContinue | Stop-Process -Force
             Start-Sleep 5
           }
