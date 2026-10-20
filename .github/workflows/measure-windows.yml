@@ -1,26 +1,52 @@
 name: Measure on Windows
 
-# Started by hand (Actions → Measure on Windows → Run workflow): installs a release on a clean
-# Windows VM and measures PeriHub's memory and CPU, the numbers quoted in the README. No devices
-# are connected, so PeriHub only waits for them. The results are in the run's summary.
+# Started by hand (Actions → Measure on Windows → Run workflow): installs a release, or builds the
+# chosen branch when no release is given, on a clean Windows VM and measures PeriHub's memory and
+# CPU, the numbers quoted in the README. No devices are connected, so PeriHub only waits for them.
+# The results are in the run's summary.
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release to measure
-        default: v0.3.0
+        description: Release to measure (empty = build this branch)
+        default: ""
 
 jobs:
   measure:
     runs-on: windows-latest
     steps:
-      - name: Install the release
+      - uses: actions/checkout@v4
+        if: inputs.tag == ''
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: inputs.tag == ''
+
+      - uses: Swatinem/rust-cache@v2
+        if: inputs.tag == ''
+
+      - uses: actions/setup-node@v4
+        if: inputs.tag == ''
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Build the installer
+        if: inputs.tag == ''
+        working-directory: app
+        run: |
+          npm ci
+          npm run tauri build -- --bundles nsis
+          New-Item -ItemType Directory -Force ..\dl | Out-Null
+          Copy-Item ..\target\release\bundle\nsis\*-setup.exe ..\dl\
+
+      - name: Install
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
-          gh release download $env:TAG -R $env:GITHUB_REPOSITORY -p '*_x64-setup.exe' -D dl
+          if ($env:TAG) { gh release download $env:TAG -R $env:GITHUB_REPOSITORY -p '*_x64-setup.exe' -D dl }
           $setup = Get-ChildItem dl\*_x64-setup.exe
           "Installer: $($setup.Name), $([math]::Round($setup.Length / 1MB, 1)) MB" | Tee-Object -Append results.txt
           Start-Process $setup.FullName -ArgumentList '/S' -Wait
@@ -69,7 +95,7 @@ jobs:
             Start-Sleep 5
           }
           Measure-PeriHub 'In the tray (window closed)' @('--hidden')
-          Measure-PeriHub 'Window open' @()
+          Measure-PeriHub 'Window open (in front)' @()
 
       - name: Summary
         if: always()
