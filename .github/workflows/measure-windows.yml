@@ -95,7 +95,7 @@ jobs:
             Start-Sleep 5
           }
           Measure-PeriHub 'In the tray (window closed)' @('--hidden')
-          Measure-PeriHub 'Window open (in front)' @()
+          Measure-PeriHub 'Window open' @()
 
       - name: Summary
         if: always()
