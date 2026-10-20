@@ -1,6 +1,7 @@
 //! Detects supported devices when they are plugged in or unplugged.
 
 use std::ffi::CString;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -10,6 +11,7 @@ use serde::Serialize;
 
 use crate::apex::Apex3Tkl;
 use crate::config::KeyboardConfig;
+use crate::conflicts::{self, Conflict};
 use crate::error::{Error, Result};
 use crate::hidpp::HidppDevice;
 use crate::hidpp::models::{self, MouseModel};
@@ -18,6 +20,8 @@ use crate::mouse::{MouseInfo, MouseTask};
 use crate::worker::Worker;
 
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
+/// Conflicting programs are looked for every this many detection passes (10 seconds).
+const CONFLICT_CHECK_EVERY: u32 = 5;
 
 const STEELSERIES: u16 = 0x1038;
 const APEX_3_TKL: u16 = 0x1622;
@@ -45,12 +49,18 @@ pub struct DeviceStatus {
     /// Last connection error, to show to the user (e.g. missing permissions).
     pub keyboard_error: Option<String>,
     pub mouse_error: Option<String>,
+    /// Running programs that take control of the devices, such as Logitech G HUB.
+    pub conflicts: Vec<String>,
 }
 
 #[derive(Default)]
 struct Slots {
     keyboard: Option<(Worker<KeyboardTask>, KeyboardInfo)>,
     mouse: Option<(Worker<MouseTask>, MouseInfo)>,
+    /// Set by the mouse's thread while another program controls the mouse.
+    mouse_host_mode: Option<Arc<AtomicBool>>,
+    reported_host_mode: bool,
+    conflicts: Vec<Conflict>,
     keyboard_error: Option<String>,
     mouse_error: Option<String>,
     /// Path of the open mouse, to notice when it goes away while another one is connected.
@@ -96,10 +106,16 @@ impl Manager {
                 return;
             }
         };
+        let mut pass = 0u32;
         loop {
-            if self.poll(&mut api) {
+            let mut changed = self.poll(&mut api);
+            if pass.is_multiple_of(CONFLICT_CHECK_EVERY) {
+                changed |= self.check_conflicts();
+            }
+            if changed {
                 listener(&self.status());
             }
+            pass = pass.wrapping_add(1);
             thread::sleep(POLL_INTERVAL);
         }
     }
@@ -180,6 +196,8 @@ impl Manager {
             let error = match result {
                 Ok(task) => {
                     let mouse = task.info.clone();
+                    slots.mouse_host_mode = Some(task.host_mode_flag());
+                    slots.reported_host_mode = mouse.host_mode;
                     slots.mouse = Some((Worker::spawn("perihub-mouse", task), mouse));
                     slots.mouse_path = Some(info.path().to_owned());
                     None
@@ -194,16 +212,40 @@ impl Manager {
             changed |= slots.mouse.is_some() || slots.mouse_error != error;
             slots.mouse_error = error;
         }
+        // The mouse's thread notices when another program takes the mouse or gives it back.
+        let mut slots = self.slots.lock().unwrap();
+        let host_mode =
+            slots.mouse.is_some() && slots.mouse_host_mode.as_ref().is_some_and(|f| f.load(Ordering::SeqCst));
+        if host_mode != slots.reported_host_mode {
+            slots.reported_host_mode = host_mode;
+            changed = true;
+        }
         changed
+    }
+
+    /// Looks for running programs that take control of the devices. Returns `true` if the list changed.
+    fn check_conflicts(&self) -> bool {
+        let running = conflicts::running();
+        let mut slots = self.slots.lock().unwrap();
+        if slots.conflicts == running {
+            return false;
+        }
+        log::info!("programs that conflict with PeriHub: {:?}", running.iter().map(|c| c.name()).collect::<Vec<_>>());
+        slots.conflicts = running;
+        true
     }
 
     pub fn status(&self) -> DeviceStatus {
         let slots = self.slots.lock().unwrap();
         DeviceStatus {
             keyboard: slots.keyboard.as_ref().map(|(_, info)| info.clone()),
-            mouse: slots.mouse.as_ref().map(|(_, info)| info.clone()),
+            mouse: slots
+                .mouse
+                .as_ref()
+                .map(|(_, info)| MouseInfo { host_mode: slots.reported_host_mode, ..info.clone() }),
             keyboard_error: slots.keyboard_error.clone(),
             mouse_error: slots.mouse_error.clone(),
+            conflicts: slots.conflicts.iter().map(|c| c.name().to_string()).collect(),
         }
     }
 

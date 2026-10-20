@@ -1,12 +1,15 @@
 //! Logitech mouse state and operations, run on the device's dedicated thread.
 
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
 use crate::config::write_backup;
-use crate::error::{Error, Result};
+use crate::conflicts;
+use crate::error::{Error, HidppErrorCode, Result};
 use crate::hidpp::macros::{self, Macro, Packer};
 use crate::hidpp::models::MouseModel;
 use crate::hidpp::profile::{self, ButtonAction, LedEffect, ProfileSettings};
@@ -17,6 +20,8 @@ use crate::worker::DeviceTask;
 /// but not written.
 const WRITABLE_PROFILE_FORMATS: &[u8] = &[2];
 const ONBOARD_MODE: u8 = 1;
+/// How often the mouse is checked for another program having taken control of it.
+const MODE_CHECK: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MouseInfo {
@@ -56,6 +61,34 @@ pub struct MouseTask {
     dev: HidppDevice,
     model: &'static MouseModel,
     pub info: MouseInfo,
+    /// Another program controls the mouse now (shared with the manager, for the status).
+    host_mode: Arc<AtomicBool>,
+    last_mode_check: Instant,
+    /// Last valid active profile, restored if the mouse comes back without one.
+    last_profile: u8,
+}
+
+/// What to do after reading the mouse's mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ModeAction {
+    /// The onboard profiles are in use.
+    Fine,
+    /// Software control, left alone: the interface tells the user.
+    Report,
+    /// Software control that nobody uses any more (e.g. after a wake-up): back to the onboard profiles.
+    SwitchBack,
+}
+
+/// Untested models are only read, and a program that is running (G HUB) takes the mouse again
+/// at once, so only a verified mouse that nothing else controls is switched back.
+fn mode_action(mode: u8, verified: bool, conflict_running: bool) -> ModeAction {
+    if mode == ONBOARD_MODE {
+        ModeAction::Fine
+    } else if verified && !conflict_running {
+        ModeAction::SwitchBack
+    } else {
+        ModeAction::Report
+    }
 }
 
 /// Features that some mice lack (no LEDs, a different polling rate feature) leave an empty list.
@@ -72,20 +105,12 @@ impl MouseTask {
         if onboard.memory_model != 1 || onboard.macro_format != 1 {
             return Err(Error::Protocol("onboard profile memory uses an unknown format".into()));
         }
-        // If another program left the mouse in host mode, switch back to the onboard profiles.
-        // Unverified models are only read: the interface explains the situation instead.
-        let mut host_mode = dev.onboard_mode()? != ONBOARD_MODE;
-        if host_mode && model.verified {
-            log::info!("mouse in host mode: switching to onboard profiles");
-            dev.set_onboard_mode(ONBOARD_MODE)?;
-            host_mode = false;
-        }
         let info = MouseInfo {
             product_id: model.product_id,
             model: model.name.into(),
             name: dev.device_name()?,
             verified: model.verified,
-            host_mode,
+            host_mode: false,
             firmware: dev.firmware()?,
             dpi: dev.dpi_capabilities(0)?,
             report_rates_ms: missing_as_empty(dev.report_rates())?,
@@ -93,7 +118,53 @@ impl MouseTask {
             writable: model.verified && WRITABLE_PROFILE_FORMATS.contains(&onboard.profile_format),
             onboard,
         };
-        Ok(Self { dev, model, info })
+        let mut task = Self {
+            dev,
+            model,
+            info,
+            host_mode: Arc::new(AtomicBool::new(false)),
+            last_mode_check: Instant::now(),
+            last_profile: 1,
+        };
+        task.check_mode()?;
+        task.info.host_mode = task.host_mode.load(Ordering::SeqCst);
+        let active = task.dev.active_profile()?;
+        if (1..=task.profile_count()).contains(&active) {
+            task.last_profile = active;
+        }
+        Ok(task)
+    }
+
+    /// Set while another program controls the mouse; read by the manager for the status.
+    pub fn host_mode_flag(&self) -> Arc<AtomicBool> {
+        self.host_mode.clone()
+    }
+
+    /// Reads the mouse's mode and acts on it (see [`mode_action`]). G HUB, for example, takes the
+    /// mouse when it starts and after every wake-up.
+    fn check_mode(&mut self) -> Result<()> {
+        self.last_mode_check = Instant::now();
+        let mode = self.dev.onboard_mode()?;
+        // Processes are listed only when the mouse is not in its onboard mode.
+        let conflict_running = mode != ONBOARD_MODE && !conflicts::running().is_empty();
+        let host_mode = match mode_action(mode, self.model.verified, conflict_running) {
+            ModeAction::Fine => false,
+            ModeAction::Report => true,
+            ModeAction::SwitchBack => {
+                log::info!("the mouse was left under software control: switching back to its onboard profiles");
+                self.dev.set_onboard_mode(ONBOARD_MODE)?;
+                // After a wake-up the G502 HERO came back with no active profile (0).
+                let active = self.dev.active_profile()?;
+                if !(1..=self.profile_count()).contains(&active) {
+                    self.dev.set_active_profile(self.last_profile)?;
+                }
+                false
+            }
+        };
+        if self.host_mode.swap(host_mode, Ordering::SeqCst) != host_mode {
+            log::info!("mouse under the control of another program: {host_mode}");
+        }
+        Ok(())
     }
 
     fn sector_size(&self) -> u16 {
@@ -136,7 +207,7 @@ impl MouseTask {
             profiles.push(MouseProfile { number, enabled: enabled[number as usize - 1], settings });
         }
         Ok(MouseState {
-            active_profile: self.dev.active_profile()?,
+            active_profile: self.read_active_profile()?,
             active_dpi_index: self.dev.active_dpi_index()?,
             current_dpi: self.dev.sensor_dpi(0)?.0,
             profiles,
@@ -379,12 +450,32 @@ impl MouseTask {
     }
 
     pub fn active_profile(&mut self) -> Result<u8> {
-        self.dev.active_profile()
+        self.read_active_profile()
+    }
+
+    fn read_active_profile(&mut self) -> Result<u8> {
+        let active = self.dev.active_profile()?;
+        if (1..=self.profile_count()).contains(&active) {
+            self.last_profile = active;
+        }
+        Ok(active)
     }
 
     pub fn set_active_profile(&mut self, number: u8) -> Result<()> {
         self.check_number(number)?;
-        self.dev.set_active_profile(number)
+        match self.dev.set_active_profile(number) {
+            // The mouse refuses while another program controls it: check, then try once more.
+            Err(Error::Hidpp(HidppErrorCode(0x02))) => {
+                self.check_mode()?;
+                if self.host_mode.load(Ordering::SeqCst) {
+                    return Err(Error::Invalid("another program, such as Logitech G HUB, controls the mouse".into()));
+                }
+                self.dev.set_active_profile(number)?;
+            }
+            other => other?,
+        }
+        self.last_profile = number;
+        Ok(())
     }
 
     pub fn set_active_dpi_index(&mut self, index: u8) -> Result<()> {
@@ -414,6 +505,29 @@ impl MouseTask {
 
 impl DeviceTask for MouseTask {
     fn tick(&mut self) -> Result<Duration> {
-        Ok(Duration::from_secs(3600))
+        // tick also runs after every request: the mode is read only every MODE_CHECK.
+        if self.last_mode_check.elapsed() >= MODE_CHECK {
+            match self.check_mode() {
+                Ok(()) => {}
+                // The mouse is gone: the manager opens it again when it is back.
+                Err(e @ Error::Hid(_)) => return Err(e),
+                // Anything else (a busy mouse, a refused command) must not close the connection.
+                Err(e) => log::debug!("mouse mode check: {e}"),
+            }
+        }
+        Ok(MODE_CHECK.saturating_sub(self.last_mode_check.elapsed()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn switches_back_only_a_verified_mouse_nobody_else_controls() {
+        assert_eq!(mode_action(ONBOARD_MODE, true, true), ModeAction::Fine);
+        assert_eq!(mode_action(2, true, false), ModeAction::SwitchBack);
+        assert_eq!(mode_action(2, true, true), ModeAction::Report);
+        assert_eq!(mode_action(2, false, false), ModeAction::Report);
     }
 }

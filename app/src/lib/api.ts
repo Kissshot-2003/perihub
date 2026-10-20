@@ -194,6 +194,8 @@ export interface DeviceStatus {
   mouse: MouseInfo | null;
   keyboard_error: string | null;
   mouse_error: string | null;
+  /** Running programs that take control of the devices, such as "Logitech G HUB". */
+  conflicts: string[];
 }
 
 export interface AppSettings {

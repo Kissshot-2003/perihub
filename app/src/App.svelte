@@ -25,7 +25,7 @@
     tab = undefined;
     history.replaceState(null, "", `#${next}`);
   }
-  let status = $state<DeviceStatus>({ keyboard: null, mouse: null, keyboard_error: null, mouse_error: null });
+  let status = $state<DeviceStatus>({ keyboard: null, mouse: null, keyboard_error: null, mouse_error: null, conflicts: [] });
 
   onMount(() => {
     api.status().then((s) => (status = s));
@@ -78,6 +78,13 @@
   </nav>
 
   <main>
+    {#each status.conflicts as name (name)}
+      <div class="notice error conflict">
+        <b>{name} is running.</b> It can take control of your devices when it starts and after every wake-up, so the
+        mouse stops using its onboard profiles, buttons and macros. Quit it from its tray icon and turn off its
+        autostart (Task Manager → Startup apps).
+      </div>
+    {/each}
     {#if page === "keyboard"}
       {#key tab}<Keyboard info={status.keyboard} error={status.keyboard_error} initialTab={tab} />{/key}
     {:else if page === "mouse"}
@@ -127,6 +134,10 @@
 
   .tight {
     gap: 2px;
+  }
+
+  .conflict {
+    margin-bottom: 16px;
   }
 
   .update {

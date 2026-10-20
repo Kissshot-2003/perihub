@@ -154,6 +154,13 @@
 {:else if info && !info.writable}
   <div class="notice error">This model uses a profile format that has not been verified yet: editing is disabled.</div>
 {/if}
+{#if info?.verified && info.host_mode}
+  <div class="notice error">
+    Another program controls the mouse right now, so it is not using the profiles shown here: buttons, macros and DPI
+    levels may not work as saved. When that program is closed, PeriHub gives the mouse back its profiles within a few
+    seconds.
+  </div>
+{/if}
 
 {#if info && mouse && draft}
   <div class="profiles">
