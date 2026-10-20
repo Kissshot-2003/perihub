@@ -1,15 +1,22 @@
 <script lang="ts">
-  // Editor for a macro stored in the mouse: kind, steps recorded from the keyboard or added by hand.
+  // Editor for a macro stored in the mouse, or (with `soft`) for a macro run by PeriHub: kind or
+  // mode, steps recorded from the keyboard or added by hand.
   import { untrack } from "svelte";
-  import { api, errorText, type KeyInfo, type Macro, type MacroKind, type MacroStep } from "../lib/api";
+  import {
+    api, errorText, type KeyInfo, type Macro, type MacroKind, type MacroStep, type SoftMode, type SoftStep,
+    type SoftwareMacro,
+  } from "../lib/api";
   import { CONSUMER_KEYS, keyLabel, MOUSE_CLICKS } from "../lib/keys";
   import {
-    DEFAULT_DELAY_MS, MACRO_KINDS, MAX_DELAY_MS, MODIFIER_KEYS, macroSize, recordedStep, releaseOf, stepLabel,
-    type MacroSource,
+    DEFAULT_DELAY_MS, MACRO_KINDS, MAX_DELAY_MS, MODIFIER_KEYS, macroSize, recordedStep, releaseOf, SOFT_MODES,
+    stepLabel, type MacroSource,
   } from "../lib/macros";
 
   interface Props {
     content: Macro;
+    /** A macro run by PeriHub to edit instead of `content` (key 0: a new one). */
+    soft?: SoftwareMacro;
+    onsavesoft?: (item: SoftwareMacro) => void;
     keys: KeyInfo[];
     /** Name of the button the macro is for. */
     button: string;
@@ -21,12 +28,18 @@
     oncancel: () => void;
   }
 
-  let { content, keys, button, library = [], space, onsave, oncancel }: Props = $props();
+  let { content, soft, onsavesoft, keys, button, library = [], space, onsave, oncancel }: Props = $props();
 
   const initial: Macro = untrack(() => JSON.parse(JSON.stringify(content)));
+  const initialSoft: SoftwareMacro | null = untrack(() => (soft ? JSON.parse(JSON.stringify(soft)) : null));
+  /** Editing a macro run by PeriHub: it has a name and a mode, and can type text or open things. */
+  const software = initialSoft !== null;
   let kind = $state<MacroKind>(initial.kind);
-  let press = $state<MacroStep[]>(initial.press);
-  let release = $state<MacroStep[]>(initial.release);
+  let press = $state<SoftStep[]>(initialSoft ? initialSoft.steps : initial.press);
+  let release = $state<SoftStep[]>(initial.release);
+  let name = $state(initialSoft?.name ?? "");
+  let mode = $state<SoftMode["type"]>(initialSoft?.mode.type ?? "once");
+  let times = $state(initialSoft?.mode.type === "repeat" ? initialSoft.mode.times : 3);
   /** List that recording and "Add" write to, for "Press and release". */
   let part = $state<"press" | "release">("press");
   let defaultDelay = $state(DEFAULT_DELAY_MS);
@@ -36,16 +49,19 @@
   let held: MacroStep[] = [];
   let lastEvent = 0;
 
-  type AddKind = "key" | "mouse" | "media" | "scroll" | "delay";
+  type AddKind = "key" | "mouse" | "media" | "scroll" | "delay" | "text" | "open";
   let addKind = $state<AddKind>("key");
   /** "k:<usage>" for a key, "m:<bit>" for a modifier. */
   let addKey = $state("k:4");
   let addButton = $state(1);
   let addMedia = $state(CONSUMER_KEYS[0].usage);
   let addScroll = $state(1);
+  let addText = $state("");
 
-  const hint = $derived(MACRO_KINDS.find((k) => k.kind === kind)?.hint ?? "");
-  const target = () => (kind === "sequence" && part === "release" ? release : press);
+  const hint = $derived(
+    software ? (SOFT_MODES.find((m) => m.type === mode)?.hint ?? "") : (MACRO_KINDS.find((k) => k.kind === kind)?.hint ?? ""),
+  );
+  const target = () => (!software && kind === "sequence" && part === "release" ? release : press);
   const delay = (ms = defaultDelay): MacroStep => ({ type: "delay", ms });
 
   function setKind(next: MacroKind) {
@@ -60,7 +76,7 @@
   }
 
   /** Adds a step, after the default pause if the previous step is not a pause. */
-  function append(steps: MacroStep[], step: MacroStep) {
+  function append(steps: SoftStep[], step: SoftStep) {
     if (steps.length && steps[steps.length - 1].type !== "delay" && step.type !== "delay") steps.push(delay());
     steps.push(step);
   }
@@ -83,12 +99,23 @@
       case "media": return addTap({ type: "consumer_down", usage: addMedia });
       case "scroll": return append(target(), { type: "wheel", amount: addScroll });
       case "delay": return target().push(delay());
+      case "text":
+      case "open": {
+        const text = addText.trim();
+        if (!text) return;
+        append(target(), addKind === "text" ? { type: "text", text: addText } : { type: "open", target: text });
+        addText = "";
+      }
     }
   }
 
-  /** Replaces the macro being edited. */
+  /** Replaces the macro being edited. A macro run by PeriHub takes the steps of both parts. */
   function load(m: Macro) {
     const copy: Macro = JSON.parse(JSON.stringify(m));
+    if (software) {
+      press = [...copy.press, ...copy.release].filter((s) => s.type !== "noop");
+      return;
+    }
     kind = copy.kind;
     press = copy.press;
     release = copy.release;
@@ -122,19 +149,23 @@
   async function exportFile() {
     fileError = fileMessage = null;
     try {
-      const m = { kind, press: $state.snapshot(press), release: kind === "sequence" ? $state.snapshot(release) : [] };
+      const m = {
+        kind,
+        press: $state.snapshot(press) as MacroStep[],
+        release: kind === "sequence" ? ($state.snapshot(release) as MacroStep[]) : [],
+      };
       if (await api.exportMacro(m, `PeriHub macro - ${button}`)) fileMessage = "Macro exported.";
     } catch (e) {
       fileError = errorText(e);
     }
   }
 
-  function move(steps: MacroStep[], i: number, by: number) {
+  function move(steps: SoftStep[], i: number, by: number) {
     const [step] = steps.splice(i, 1);
     steps.splice(i + by, 0, step);
   }
 
-  function setDelay(steps: MacroStep[], i: number, e: Event) {
+  function setDelay(steps: SoftStep[], i: number, e: Event) {
     const ms = Math.round(Number((e.target as HTMLInputElement).value));
     if (Number.isFinite(ms)) steps[i] = delay(Math.min(MAX_DELAY_MS, Math.max(0, ms)));
   }
@@ -153,7 +184,7 @@
     held = [];
   }
 
-  const sameKey = (a: MacroStep, b: MacroStep) =>
+  const sameKey = (a: SoftStep, b: SoftStep) =>
     "key" in a && "key" in b && a.key === b.key && a.modifiers === b.modifiers;
 
   function onkey(e: KeyboardEvent, down: boolean) {
@@ -185,17 +216,24 @@
   }
 
   const problem = $derived.by(() => {
+    if (software) {
+      if (!name.trim()) return "Give the macro a name.";
+      if (mode === "repeat" && !(times >= 1 && times <= 10000)) return "Choose between 1 and 10000 repetitions.";
+      return press.length ? null : "Add at least one step.";
+    }
     if (kind === "forever") return "PeriHub cannot save a macro that repeats until the profile changes: choose another kind.";
     const empty = kind === "sequence" ? !press.length && !release.length : !press.length;
     return empty ? "Add at least one step." : null;
   });
 
-  const size = $derived(macroSize({ kind, press, release: kind === "sequence" ? release : [] }));
+  const size = $derived(
+    macroSize({ kind, press: press as MacroStep[], release: kind === "sequence" ? (release as MacroStep[]) : [] }),
+  );
 
   /** Keys and buttons still down when the macro ends. */
   const leftDown = $derived.by(() => {
-    const down: MacroStep[] = [];
-    for (const step of kind === "sequence" ? [...press, ...release] : press) {
+    const down: SoftStep[] = [];
+    for (const step of !software && kind === "sequence" ? [...press, ...release] : press) {
       if (releaseOf(step)) down.push(step);
       const i = down.findIndex((d) => JSON.stringify(releaseOf(d)) === JSON.stringify(step));
       if (i >= 0) down.splice(i, 1);
@@ -205,10 +243,15 @@
 
   function save() {
     stopRecording();
+    if (initialSoft) {
+      const chosen: SoftMode = mode === "repeat" ? { type: "repeat", times } : { type: mode };
+      onsavesoft?.({ key: initialSoft.key, name: name.trim(), mode: chosen, steps: $state.snapshot(press) });
+      return;
+    }
     onsave({
       kind,
-      press: $state.snapshot(press),
-      release: kind === "sequence" ? $state.snapshot(release) : [],
+      press: $state.snapshot(press) as MacroStep[],
+      release: kind === "sequence" ? ($state.snapshot(release) as MacroStep[]) : [],
     });
   }
 
@@ -217,8 +260,8 @@
 
 <svelte:window onkeydown={(e) => onkey(e, true)} onkeyup={(e) => onkey(e, false)} onblur={stopRecording} />
 
-{#snippet stepList(steps: MacroStep[], name: "press" | "release")}
-  <ol class="steps" class:target={kind === "sequence" && part === name}>
+{#snippet stepList(steps: SoftStep[], name: "press" | "release")}
+  <ol class="steps" class:target={!software && kind === "sequence" && part === name}>
     {#each steps as step, i (i)}
       <li>
         <span class="index muted small">{i + 1}</span>
@@ -248,7 +291,7 @@
 <div class="backdrop">
   <div class="dialog col" role="dialog" aria-modal="true" aria-labelledby="macro-title">
     <div class="row wrap">
-      <h2 id="macro-title" class="grow">Macro for “{button}”</h2>
+      <h2 id="macro-title" class="grow">{software ? "Macro run by PeriHub" : "Macro"} for “{button}”</h2>
       {#if library.length}
         <select class="copy" value="" onchange={copyFrom} disabled={recording}>
           <option value="" disabled>Copy a macro from another button…</option>
@@ -257,15 +300,34 @@
       {/if}
     </div>
 
+    {#if software}
+      <label class="row small">
+        Name
+        <input class="name" bind:value={name} maxlength="60" placeholder="e.g. Auto-click" disabled={recording} />
+      </label>
+    {/if}
     <div class="col tight">
-      <div class="segmented">
-        {#each MACRO_KINDS as k (k.kind)}
-          <button class:active={kind === k.kind} disabled={recording} onclick={() => setKind(k.kind)}>{k.label}</button>
-        {/each}
+      <div class="row wrap">
+        <div class="segmented">
+          {#if software}
+            {#each SOFT_MODES as m (m.type)}
+              <button class:active={mode === m.type} disabled={recording} onclick={() => (mode = m.type)}>{m.label}</button>
+            {/each}
+          {:else}
+            {#each MACRO_KINDS as k (k.kind)}
+              <button class:active={kind === k.kind} disabled={recording} onclick={() => setKind(k.kind)}>{k.label}</button>
+            {/each}
+          {/if}
+        </div>
+        {#if software && mode === "repeat"}
+          <label class="row small">
+            <input class="times" type="number" min="1" max="10000" bind:value={times} disabled={recording} /> times
+          </label>
+        {/if}
       </div>
       <span class="muted small">{hint}</span>
     </div>
-    {#if kind === "forever"}
+    {#if !software && kind === "forever"}
       <div class="notice info">
         This macro repeats until the mouse changes profile: pressing the button again starts it over. PeriHub cannot
         save this kind, because nothing else stops it. Choose another kind to keep its steps.
@@ -289,7 +351,7 @@
     </div>
 
     <div class="lists">
-      {#if kind === "sequence"}
+      {#if !software && kind === "sequence"}
         <div class="col tight">
           <button class="part" class:active={part === "press"} onclick={() => (part = "press")} disabled={recording}>
             When pressed
@@ -314,6 +376,10 @@
         <option value="media">Media key</option>
         <option value="scroll">Scroll</option>
         <option value="delay">Pause</option>
+        {#if software}
+          <option value="text">Type text</option>
+          <option value="open">Open a website or program</option>
+        {/if}
       </select>
       {#if addKind === "key"}
         <select bind:value={addKey} disabled={recording}>
@@ -337,11 +403,15 @@
           <option value="1">Up</option>
           <option value="-1">Down</option>
         </select>
+      {:else if addKind === "text" || addKind === "open"}
+        <input class="grow text" bind:value={addText} disabled={recording}
+          placeholder={addKind === "text" ? "Text to type, accents included" : "https://… or the full path of a file or program"} />
       {/if}
       <button onclick={add} disabled={recording}>Add</button>
       <span class="muted small">
-        {#if addKind === "delay"}A pause of the standard length.{:else if addKind === "scroll"}One notch.{:else}Press and
-          release, with the standard pause between them.{/if}
+        {#if addKind === "delay"}A pause of the standard length.{:else if addKind === "scroll"}One notch.{:else if addKind === "text"}Typed
+          as it is, whatever the keyboard layout. Some games ignore typed text.{:else if addKind === "open"}Opened with
+          its default app; nothing is run through a command line.{:else}Press and release, with the standard pause between them.{/if}
       </span>
     </div>
     <span class="muted small">
@@ -358,18 +428,27 @@
 
     <footer class="row">
       <button class="ghost" disabled={recording} onclick={() => { press = []; release = []; }}>Clear</button>
-      <button class="ghost" disabled={recording} onclick={importFile}>Import…</button>
-      <button class="ghost" disabled={recording || (!press.length && !release.length)} onclick={exportFile}>Export…</button>
+      {#if !software}
+        <button class="ghost" disabled={recording} onclick={importFile}>Import…</button>
+        <button class="ghost" disabled={recording || (!press.length && !release.length)} onclick={exportFile}>Export…</button>
+      {/if}
       <div class="grow"></div>
       {#if problem}<span class="warn small">{problem}</span>{/if}
       <button onclick={oncancel}>Cancel</button>
       <button class="primary" disabled={!!problem} onclick={save}>Done</button>
     </footer>
-    <span class="muted small">
-      The macro is stored in the mouse with “Save to mouse” and works without PeriHub. It takes {size} bytes{#if space !== undefined};
-        about {space} bytes are free in the mouse{/if}.
-      {#if space !== undefined && size > space}<b class="warn">It may not fit: shorten it or remove macros you no longer use.</b>{/if}
-    </span>
+    {#if software}
+      <span class="muted small">
+        PeriHub runs this macro while it is running (also in the tray). The button starts it by sending
+        {initialSoft?.key ? keyLabel(initialSoft.key) : "an unused key (F19, F24, F13–F18)"}, which “Save to mouse” stores in the mouse.
+      </span>
+    {:else}
+      <span class="muted small">
+        The macro is stored in the mouse with “Save to mouse” and works without PeriHub. It takes {size} bytes{#if space !== undefined};
+          about {space} bytes are free in the mouse{/if}.
+        {#if space !== undefined && size > space}<b class="warn">It may not fit: shorten it or remove macros you no longer use.</b>{/if}
+      </span>
+    {/if}
   </div>
 </div>
 
@@ -401,6 +480,18 @@
 
   .copy {
     max-width: 320px;
+  }
+
+  .name {
+    width: 260px;
+  }
+
+  .times {
+    width: 80px;
+  }
+
+  .text {
+    min-width: 220px;
   }
 
   .segmented {

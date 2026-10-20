@@ -1,4 +1,4 @@
-import type { Macro, MacroKind, MacroStep, MouseProfile, ProfileSettings } from "./api";
+import type { Macro, MacroKind, MacroStep, MouseProfile, ProfileSettings, SoftMode, SoftStep, SoftwareMacro } from "./api";
 import { CONSUMER_KEYS, keyLabel, mouseButtonName, MOUSE_CLICKS } from "./keys";
 
 /** Kinds offered in the editor: "forever" exists in some mice's memory but cannot be stopped. */
@@ -13,6 +13,17 @@ export const MACRO_KINDS: { kind: MacroKind; label: string; hint: string }[] = [
     kind: "sequence",
     label: "Press and release",
     hint: "One part runs when you press the button, the other when you let go: for example, a key stays down for as long as you hold the button.",
+  },
+];
+
+/** How a macro run by PeriHub repeats. */
+export const SOFT_MODES: { type: SoftMode["type"]; label: string; hint: string }[] = [
+  { type: "once", label: "Once", hint: "Runs once each time you press the button." },
+  { type: "repeat", label: "Repeat", hint: "Runs the number of times you choose." },
+  {
+    type: "toggle",
+    label: "Press again to stop",
+    hint: "Starts with one press and repeats until you press the button again (or choose Stop software macros in the tray menu).",
   },
 ];
 
@@ -53,8 +64,10 @@ function consumerName(usage: number): string {
 }
 
 /** A step as shown in the editor, e.g. "Press Ctrl+C". */
-export function stepLabel(s: MacroStep): string {
+export function stepLabel(s: SoftStep): string {
   switch (s.type) {
+    case "text": return `Type “${s.text}”`;
+    case "open": return `Open ${s.target}`;
     case "key_down": return `Press ${keyName(s.modifiers, s.key)}`;
     case "key_up": return `Release ${keyName(s.modifiers, s.key)}`;
     case "mouse_down": return `Press ${buttonsName(s.buttons)}`;
@@ -158,8 +171,22 @@ export function recordedStep(code: string, down: boolean): MacroStep | null {
   return usage ? { type, modifiers: 0, key: usage } : null;
 }
 
+/** One line for a macro run by PeriHub, e.g. "Press again to stop: Ctrl+C · Type “gg”". */
+export function softSummary(m: SoftwareMacro): string {
+  const mode = m.mode.type === "repeat" ? `Repeat ${m.mode.times} times` : SOFT_MODES.find((x) => x.type === m.mode.type)!.label;
+  const parts = m.steps.flatMap((s) => {
+    switch (s.type) {
+      case "key_down": case "mouse_down": case "consumer_down": return [stepLabel(s).replace(/^Press /, "")];
+      case "wheel": case "text": case "open": return [stepLabel(s)];
+      default: return [];
+    }
+  });
+  const shown = parts.length > 6 ? [...parts.slice(0, 6), "…"] : parts;
+  return `${mode}: ${shown.join(" ") || "no steps"}`;
+}
+
 /** The release that matches a press step (to close keys still held when recording stops). */
-export function releaseOf(step: MacroStep): MacroStep | null {
+export function releaseOf(step: SoftStep): MacroStep | null {
   switch (step.type) {
     case "key_down": return { type: "key_up", modifiers: step.modifiers, key: step.key };
     case "mouse_down": return { type: "mouse_up", buttons: step.buttons };

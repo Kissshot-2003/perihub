@@ -12,6 +12,7 @@ pub mod hidpp;
 pub mod keyboard;
 pub mod manager;
 pub mod mouse;
+pub mod softmacro;
 pub mod worker;
 
 pub use color::Rgb;

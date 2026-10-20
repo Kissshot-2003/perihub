@@ -58,6 +58,8 @@ pub struct AppConfig {
     pub app_profiles: AppProfiles,
     /// Look for a new version on GitHub at startup (Windows).
     pub check_updates: bool,
+    /// Macros run by PeriHub, started by buttons that send their trigger key.
+    pub software_macros: Vec<crate::softmacro::SoftwareMacro>,
 }
 
 impl Default for AppConfig {
@@ -68,6 +70,7 @@ impl Default for AppConfig {
             lighting_presets: Vec::new(),
             app_profiles: AppProfiles::default(),
             check_updates: true,
+            software_macros: Vec::new(),
         }
     }
 }

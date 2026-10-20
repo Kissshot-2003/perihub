@@ -6,6 +6,7 @@ mod commands;
 mod key_access;
 mod logfile;
 mod macro_files;
+mod soft_macros;
 mod updates;
 mod window;
 
@@ -14,12 +15,14 @@ use std::sync::{Arc, Mutex, OnceLock};
 use perihub_core::Manager;
 use perihub_core::app_profiles::AppProfileEngine;
 use perihub_core::config::AppConfig;
+use perihub_core::softmacro::SoftMacroEngine;
 use tauri::{AppHandle, Emitter, Manager as _, RunEvent, WindowEvent};
 
 pub struct AppState {
     pub manager: Manager,
     pub config: Mutex<AppConfig>,
     pub profiles: Arc<AppProfileEngine>,
+    pub soft: Arc<SoftMacroEngine>,
 }
 
 /// Starts following the focused app; the interface gets an event at every change.
@@ -63,16 +66,23 @@ fn main() {
             let handle = app.handle().clone();
             // The device listener starts before the app profiles exist: they are set right after.
             let profiles_slot = Arc::new(OnceLock::<Arc<AppProfileEngine>>::new());
-            let slot = profiles_slot.clone();
+            let soft_slot = Arc::new(OnceLock::<(Arc<SoftMacroEngine>, Manager)>::new());
+            let (slot, soft_listener) = (profiles_slot.clone(), soft_slot.clone());
             let manager = Manager::start(
                 config.keyboard.clone(),
                 Box::new(move |status| {
                     if let Some(profiles) = slot.get() {
                         profiles.devices_changed(status);
                     }
+                    if let Some((soft, manager)) = soft_listener.get() {
+                        soft.watch_mouse(manager.mouse_path());
+                    }
                     let _ = handle.emit("devices-changed", status);
                 }),
             );
+            let soft = SoftMacroEngine::new(config.software_macros.clone());
+            let _ = soft_slot.set((soft.clone(), manager.clone()));
+            soft.watch_mouse(manager.mouse_path());
             let profiles =
                 AppProfileEngine::new(manager.clone(), config.app_profiles.clone(), config.lighting_presets.clone());
             let _ = profiles_slot.set(profiles.clone());
@@ -81,7 +91,7 @@ fn main() {
                 watch_focus(app.handle(), &profiles);
             }
             let start_hidden = hidden_requested || config.start_hidden;
-            app.manage(AppState { manager, config: Mutex::new(config), profiles });
+            app.manage(AppState { manager, config: Mutex::new(config), profiles, soft });
 
             app.manage(updates::Available::default());
             window::build_tray(app.handle())?;
@@ -135,6 +145,12 @@ fn main() {
             commands::app_set_settings,
             commands::app_quit,
             commands::app_open_log_folder,
+            soft_macros::soft_get,
+            soft_macros::soft_save,
+            soft_macros::soft_delete,
+            soft_macros::soft_stop_all,
+            soft_macros::soft_grant_access,
+            soft_macros::soft_revoke_access,
             macro_files::macro_export,
             macro_files::macro_import,
             updates::update_check,

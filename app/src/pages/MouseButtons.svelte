@@ -1,9 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { api, type ButtonAction, type KeyInfo, type MouseInfo, type MouseProfile, type ProfileSettings } from "../lib/api";
+  import {
+    api, type ButtonAction, type KeyInfo, type MouseInfo, type MouseProfile, type ProfileSettings, type SoftMacrosInfo,
+  } from "../lib/api";
   import { mouseButtonName } from "../lib/keys";
   import { macroLibrary } from "../lib/macros";
   import ButtonActionEditor from "../components/ButtonActionEditor.svelte";
+  import SoftMacros from "../components/SoftMacros.svelte";
 
   interface Props {
     info: MouseInfo;
@@ -18,9 +21,16 @@
   let { info, settings = $bindable(), profiles, profileNumber, macroSpace }: Props = $props();
   let layer = $state<"normal" | "gshift">("normal");
   let keys = $state<KeyInfo[]>([]);
+  let soft = $state<SoftMacrosInfo | null>(null);
 
-  onMount(async () => {
-    keys = (await api.keyCatalog()).targets;
+  const refreshSoft = () => api.softMacros().then((i) => (soft = i), () => {});
+
+  onMount(() => {
+    api.keyCatalog().then((c) => (keys = c.targets));
+    refreshSoft();
+    // Which macros are running, while the window is in front.
+    const timer = setInterval(() => document.hasFocus() && refreshSoft(), 2000);
+    return () => clearInterval(timer);
   });
 
   const list = $derived(layer === "normal" ? settings.buttons : settings.gshift_buttons);
@@ -59,10 +69,11 @@
         <strong>{mouseButtonName(info.product_id, i)}</strong>
         <span class="small muted">Button {i + 1}</span>
       </div>
-      <ButtonActionEditor {action} {keys} {library} {macroSpace} name={mouseButtonName(info.product_id, i)} allowDisabledHint={layer === "gshift"}
+      <ButtonActionEditor {action} {keys} {library} {macroSpace} softMacros={soft?.macros ?? []} onsoftsaved={refreshSoft} name={mouseButtonName(info.product_id, i)} allowDisabledHint={layer === "gshift"}
         onchange={(a) => update(i, a)} />
     {/each}
   </div>
+  {#if soft}<SoftMacros info={soft} onchange={refreshSoft} />{/if}
 </div>
 
 <style>

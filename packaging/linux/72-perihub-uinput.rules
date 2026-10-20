@@ -1,0 +1,9 @@
+# PeriHub: OPTIONAL rule for software macros (macros run by PeriHub instead of the device).
+#
+# WARNING: with this rule, every program running under your user account can create a virtual
+# keyboard and mouse, and use them to type and click anything as if you did it yourself: for
+# example, type commands into a terminal. Programs no longer need any permission for that.
+#
+# PeriHub installs it only when you ask, after showing this warning. To undo, delete the file:
+#   sudo rm /etc/udev/rules.d/72-perihub-uinput.rules && sudo udevadm control --reload
+KERNEL=="uinput", SUBSYSTEM=="misc", OPTIONS+="static_node=uinput", TAG+="uaccess"

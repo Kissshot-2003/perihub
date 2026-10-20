@@ -42,7 +42,7 @@ pub fn kb_key_access(state: State<'_, AppState>) -> KeyAccess {
 
 /// Runs a shell script as root through polkit, which shows the system's password window.
 /// `input` goes to the script's standard input, so no file another program could swap is involved.
-fn run_as_root(script: &str, input: &str) -> Result<(), String> {
+pub(crate) fn run_as_root(script: &str, input: &str) -> Result<(), String> {
     use std::io::Write;
     use std::process::{Command, Stdio};
 
@@ -62,7 +62,7 @@ fn run_as_root(script: &str, input: &str) -> Result<(), String> {
     }
 }
 
-async fn as_root(script: String, input: &'static str) -> Result<(), String> {
+pub(crate) async fn as_root(script: String, input: &'static str) -> Result<(), String> {
     if !cfg!(target_os = "linux") {
         return Err("only needed on Linux".into());
     }

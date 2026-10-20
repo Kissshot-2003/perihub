@@ -109,6 +109,31 @@ export type MacroStep =
   | { type: "delay"; ms: number }
   | { type: "noop" };
 
+/** A step of a macro run by PeriHub: the device steps plus typing text and opening a website or program. */
+export type SoftStep = MacroStep | { type: "text"; text: string } | { type: "open"; target: string };
+
+/** once; repeat a number of times; toggle: again and again until the button is pressed again. */
+export type SoftMode = { type: "once" } | { type: "repeat"; times: number } | { type: "toggle" };
+
+/** Macro run by PeriHub; the buttons that start it send `key` (F19, F24, F13–F18). Key 0: new. */
+export interface SoftwareMacro {
+  key: number;
+  name: string;
+  mode: SoftMode;
+  steps: SoftStep[];
+}
+
+export interface SoftMacrosInfo {
+  macros: SoftwareMacro[];
+  /** Whether PeriHub can simulate a keyboard and a mouse, and which macros are running. */
+  status: { available: boolean; error: string | null; running: number[] };
+  /** Trigger keys not used yet. */
+  free_keys: number[];
+  /** Linux: PeriHub's optional /dev/uinput rule is installed / can be installed. */
+  rule_installed: boolean;
+  rule_supported: boolean;
+}
+
 /** once: when pressed. sequence: `press` when pressed, `release` when released. while_held: again
  * and again while held. forever: until the profile changes (read only, PeriHub does not write it). */
 export type MacroKind = "once" | "sequence" | "while_held" | "forever";
@@ -264,6 +289,13 @@ export const api = {
   setAppSettings: (settings: AppSettings) => invoke<AppSettings>("app_set_settings", { settings }),
   quit: () => invoke<void>("app_quit"),
   openLogFolder: () => invoke<void>("app_open_log_folder"),
+  softMacros: () => invoke<SoftMacrosInfo>("soft_get"),
+  /** Saves a macro run by PeriHub; a new one (key 0) gets its trigger key. */
+  saveSoftMacro: (item: SoftwareMacro) => invoke<SoftwareMacro>("soft_save", { item }),
+  deleteSoftMacro: (key: number) => invoke<void>("soft_delete", { key }),
+  stopSoftMacros: () => invoke<void>("soft_stop_all"),
+  grantSoftAccess: () => invoke<void>("soft_grant_access"),
+  revokeSoftAccess: () => invoke<void>("soft_revoke_access"),
   /** Saves a macro to a file chosen in the system's dialog; false if cancelled. */
   exportMacro: (content: Macro, name: string) => invoke<boolean>("macro_export", { content, name }),
   /** Reads a macro from a file chosen in the system's dialog; null if cancelled. */

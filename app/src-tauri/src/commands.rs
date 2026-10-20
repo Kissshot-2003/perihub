@@ -313,5 +313,5 @@ pub fn app_open_log_folder() -> CmdResult<()> {
 
 #[tauri::command]
 pub fn app_quit(app: AppHandle) {
-    app.exit(0);
+    crate::window::quit(&app);
 }

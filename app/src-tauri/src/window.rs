@@ -50,13 +50,14 @@ fn open_page(window: &WebviewWindow, page: &str) {
 
 fn menu(app: &AppHandle, update: Option<&str>) -> tauri::Result<Menu<Wry>> {
     let open = MenuItem::with_id(app, "open", "Open PeriHub", true, None::<&str>)?;
+    let stop = MenuItem::with_id(app, "stop", "Stop software macros", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     match update {
         Some(version) => {
             let update = MenuItem::with_id(app, "update", format!("Update to {version}…"), true, None::<&str>)?;
-            Menu::with_items(app, &[&open, &update, &quit])
+            Menu::with_items(app, &[&open, &update, &stop, &quit])
         }
-        None => Menu::with_items(app, &[&open, &quit]),
+        None => Menu::with_items(app, &[&open, &stop, &quit]),
     }
 }
 
@@ -68,7 +69,8 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show(app, None),
             "update" => show(app, Some("settings")),
-            "quit" => app.exit(0),
+            "stop" => app.state::<crate::AppState>().soft.stop_all(),
+            "quit" => quit(app),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
@@ -81,6 +83,12 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     }
     tray.build(app)?;
     Ok(())
+}
+
+/// Quits PeriHub after releasing the keys a running software macro holds.
+pub fn quit(app: &AppHandle) {
+    app.state::<crate::AppState>().soft.stop_all_and_wait();
+    app.exit(0);
 }
 
 /// Tells about a new version from the tray, where PeriHub spends most of its time: in the

@@ -180,13 +180,34 @@ fn scan_code_usage(code: u16, e0: bool) -> Option<u8> {
         (false, 0x34) => 0x37, (false, 0x35) => 0x38, (false, 0x36) => 0xE5, (false, 0x38) => 0xE2,
         (false, 0x39) => 0x2C, (false, 0x3A) => 0x39,
         (false, 0x3B..=0x44) => 0x3A + (code - 0x3B) as u8, // F1–F10
+        (false, 0x45) => 0x53, (false, 0x46) => 0x47, // Num Lock, Scroll Lock
+        (false, 0x47) => 0x5F, (false, 0x48) => 0x60, (false, 0x49) => 0x61, (false, 0x4A) => 0x56,
+        (false, 0x4B) => 0x5C, (false, 0x4C) => 0x5D, (false, 0x4D) => 0x5E, (false, 0x4E) => 0x57,
+        (false, 0x4F) => 0x59, (false, 0x50) => 0x5A, (false, 0x51) => 0x5B, (false, 0x52) => 0x62,
+        (false, 0x53) => 0x63, (false, 0x37) => 0x55, // keypad
         (false, 0x56) => 0x64, (false, 0x57) => 0x44, (false, 0x58) => 0x45,
+        (false, 0x64..=0x6E) => 0x68 + (code - 0x64) as u8, // F13–F23
+        (false, 0x76) => 0x73, // F24
+        (true, 0x1C) => 0x58, (true, 0x35) => 0x54, (true, 0x37) => 0x46, // keypad Enter and /, Print Screen
         (true, 0x1D) => 0xE4, (true, 0x38) => 0xE6, (true, 0x47) => 0x4A, (true, 0x48) => 0x52,
         (true, 0x49) => 0x4B, (true, 0x4B) => 0x50, (true, 0x4D) => 0x4F, (true, 0x4F) => 0x4D,
         (true, 0x50) => 0x51, (true, 0x51) => 0x4E, (true, 0x52) => 0x49, (true, 0x53) => 0x4C,
         (true, 0x5B) => 0xE3, (true, 0x5C) => 0xE7, (true, 0x5D) => 0x65,
         _ => return None,
     })
+}
+
+/// Scan code (set 1) and extended prefix of a key from its HID usage: the reverse of [`scan_code_usage`].
+#[cfg(any(windows, test))]
+pub fn usage_scan_code(usage: u8) -> Option<(u16, bool)> {
+    // The ISO key left of Enter shares its scan code with the ANSI backslash.
+    if usage == 0x32 {
+        return Some((0x2B, false));
+    }
+    [false, true]
+        .into_iter()
+        .flat_map(|e0| (1..0x80).map(move |code| (code, e0)))
+        .find(|&(code, e0)| scan_code_usage(code, e0) == Some(usage))
 }
 
 /// Windows: the keyboard's keys through Raw Input, on a thread with a hidden message-only window.
@@ -382,11 +403,23 @@ mod tests {
         assert_eq!(scan_code_usage(0x05, false), Some(0x21)); // 4
         assert_eq!(scan_code_usage(0x44, false), Some(0x43)); // F10
         assert_eq!(scan_code_usage(0x4D, true), Some(0x4F)); // right arrow
-        assert_eq!(scan_code_usage(0x4D, false), None); // keypad 6: not on a TKL
+        assert_eq!(scan_code_usage(0x4D, false), Some(0x5E)); // keypad 6, for software macros
         for code in 0x01..=0x58 {
-            if let Some(usage) = scan_code_usage(code, false) {
+            // Keys the TKL has (no keypad, Print Screen, Scroll Lock or Pause) light a zone.
+            if let Some(usage) = scan_code_usage(code, false).filter(|u| !matches!(u, 0x46..=0x48 | 0x53..=0x63)) {
                 assert!(zone_of(usage).is_some(), "scan code {code:#04x}");
             }
+        }
+    }
+
+    #[test]
+    fn scan_codes_of_usages() {
+        assert_eq!(usage_scan_code(0x04), Some((0x1E, false))); // A
+        assert_eq!(usage_scan_code(0x6E), Some((0x6A, false))); // F19
+        assert_eq!(usage_scan_code(0x73), Some((0x76, false))); // F24
+        assert_eq!(usage_scan_code(0xE4), Some((0x1D, true))); // right Ctrl
+        for usage in (0x04..=0x45).chain(0x68..=0x73).chain(0xE0..=0xE7) {
+            assert!(usage_scan_code(usage).is_some(), "0x{usage:02x}");
         }
     }
 
