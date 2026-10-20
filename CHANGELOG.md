@@ -17,6 +17,7 @@
 
 ### Fixed
 - After a wake-up with G HUB running, PeriHub kept saying the mouse used its onboard profiles, and app profiles failed to switch it with "invalid argument".
+- Opening the keyboard lighting page sent the keyboard the lighting it already showed: the effect restarted with a short glitch, and a lighting set by an app profile was replaced by the normal one.
 
 ## 0.3.0 — 2026-10-19
 
