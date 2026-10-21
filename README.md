@@ -155,6 +155,15 @@ No drivers are needed: PeriHub uses the standard Windows HID interfaces.
 
 From version 0.3.0, PeriHub tells you when a new version is out and installs it with one click (**Settings → Updates**). From 0.4.0 it also checks once a day while it runs in the tray, and shows the new version in the tray menu.
 
+**With Scoop**: [@Kissshot-2003](https://github.com/Kissshot-2003) maintains a [bucket for PeriHub](https://github.com/Kissshot-2003/perihub-scoop).
+
+```pwsh
+scoop bucket add perihub-scoop https://github.com/Kissshot-2003/perihub-scoop
+scoop install perihub-scoop/perihub
+```
+
+Update it with `scoop update perihub`, not from **Settings → Updates**: PeriHub's installer would add a second copy outside Scoop. From 0.4.3, PeriHub recognizes a Scoop install and leaves updates to Scoop.
+
 ### Linux
 
 **AppImage** (any distribution, including Arch and CachyOS):
