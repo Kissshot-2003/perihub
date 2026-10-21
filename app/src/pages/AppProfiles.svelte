@@ -84,7 +84,7 @@
       </div>
 
       <div class="card col">
-        <h3>Rules</h3>
+        <h2>Rules</h2>
         {#if profiles.rules.length}
           <div class="rules">
             <span class="small muted">App</span>
@@ -132,6 +132,10 @@
 </div>
 
 <style>
+  h1 {
+    margin-bottom: 10px;
+  }
+
   .gap {
     gap: 16px;
   }

@@ -44,7 +44,7 @@
 
 <style>
   header {
-    margin-bottom: 18px;
+    margin-bottom: 20px;
   }
 
   .tight {

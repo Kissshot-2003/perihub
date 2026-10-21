@@ -115,9 +115,6 @@
 
 <style>
   .notice.warn {
-    color: var(--text);
-    border-color: #6b4a12;
-    background: #261c0c;
     gap: 8px;
   }
 

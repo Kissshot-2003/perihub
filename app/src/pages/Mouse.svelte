@@ -197,22 +197,24 @@
 {#if info && mouse && draft}
   <div class="profiles">
     {#each mouse.profiles as profile (profile.number)}
+      {@const active = profile.number === mouse.active_profile}
       <div class="profile" class:selected={profile.number === selected} class:disabled={!profile.enabled}>
-        <button class="pick" onclick={() => selectProfile(profile.number)} disabled={!!busy}>
-          <strong>Profile {profile.number}</strong>
-          <span class="small muted">
-            {profile.settings.dpi_levels.join(" / ")} DPI · {reportRateLabel(profile.settings.report_rate_ms)}
+        <button class="pick" onclick={() => selectProfile(profile.number)} disabled={!!busy}
+          title={profile.number === selected ? "Shown below" : "Show and edit this profile"}>
+          <span class="title">
+            <strong>Profile {profile.number}</strong>
+            {#if active}<span class="chip ok">Active</span>{/if}
           </span>
+          <span class="small muted">{profile.settings.dpi_levels.join(" / ")} DPI</span>
+          <span class="small muted">{reportRateLabel(profile.settings.report_rate_ms)}</span>
         </button>
-        <div class="row small">
-          {#if profile.number === mouse.active_profile}
-            <span class="chip active">Active</span>
-          {:else}
-            <button class="ghost tiny" disabled={!!busy || !profile.enabled || !info.verified} onclick={() => activate(profile.number)}>
+        <div class="actions">
+          {#if !active}
+            <button class="tiny" disabled={!!busy || !profile.enabled || !info.verified} onclick={() => activate(profile.number)}>
               Make active
             </button>
           {/if}
-          <label class="row tiny-label" title="Disabled profiles are skipped by the profile switch button">
+          <label class="row enabled" title="Disabled profiles are skipped by the profile switch button">
             <input
               type="checkbox"
               checked={profile.enabled}
@@ -257,7 +259,7 @@
     {#if leftClickMissing}
       <span class="warn small">No button does a left click any more: assign one before saving.</span>
     {:else if dirty}
-      <span class="muted small">Unsaved changes</span>
+      <span class="unsaved">Unsaved changes</span>
     {/if}
     <button disabled={!dirty || !!busy} onclick={discard}>Discard</button>
     <button class="primary" disabled={!dirty || !!busy || leftClickMissing || !info.writable} onclick={save}>
@@ -270,41 +272,44 @@
 
 <style>
   header {
-    margin-bottom: 18px;
+    margin-bottom: 20px;
     align-items: flex-start;
-  }
-
-  .dpi-now {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    padding: 6px 12px;
-    border-radius: var(--radius);
-    background: var(--panel);
-    border: 1px solid var(--line);
-  }
-
-  .dpi-now strong {
-    font-size: 20px;
-    color: var(--accent);
   }
 
   .tight {
     gap: 4px;
   }
 
+  .dpi-now {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    line-height: 1.15;
+  }
+
+  .dpi-now strong {
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+  }
+
   .profiles {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    margin-bottom: 14px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
   }
 
   .profile {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 10px;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
     border-radius: var(--radius);
     background: var(--panel);
     border: 1px solid var(--line);
@@ -312,6 +317,8 @@
 
   .profile.selected {
     border-color: var(--accent);
+    background: var(--panel-3);
+    box-shadow: inset 0 0 0 1px var(--accent);
   }
 
   .profile.disabled .pick {
@@ -321,32 +328,53 @@
   .pick {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
+    align-items: stretch;
+    gap: 2px;
     background: transparent;
     border: none;
-    padding: 2px;
+    padding: 0;
     text-align: left;
+    font-weight: 400;
   }
 
-  .chip.active {
-    color: var(--ok);
-    border-color: #1f4f3c;
+  .pick:hover:not(:disabled) {
+    background: transparent;
+  }
+
+  .title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 6px;
+    margin-bottom: 2px;
+  }
+
+  .title strong {
+    font-size: 15px;
+  }
+
+  .actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 
   .tiny {
-    padding: 2px 6px;
-    font-size: 12px;
+    padding: 3px 10px;
+    font-size: 13px;
+    white-space: nowrap;
   }
 
-  .tiny-label {
-    gap: 4px;
-    margin-left: auto;
+  .enabled {
+    gap: 6px;
+    font-size: 13px;
     color: var(--muted);
   }
 
   .notice {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
 
   fieldset {
@@ -358,11 +386,12 @@
 
   footer {
     position: sticky;
-    bottom: -26px;
-    margin: 0 -30px -26px;
-    padding: 14px 30px;
+    bottom: calc(-1 * var(--pad-y));
+    margin: 0 calc(-1 * var(--pad-x)) calc(-1 * var(--pad-y));
+    padding: 14px var(--pad-x);
     background: var(--panel);
     border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
   }
 
   .warn {

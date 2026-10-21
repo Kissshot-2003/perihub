@@ -13,6 +13,9 @@
   import SoftMacros from "../components/SoftMacros.svelte";
 
   const UNIT = 46;
+  // The board shrinks to fit narrow windows.
+  let fitWidth = $state(0);
+  const unit = $derived(fitWidth > 0 ? Math.min(UNIT, (fitWidth - 26) / LAYOUT_WIDTH) : UNIT);
   const STEELSERIES_KEY = 0xf0;
   // Factory functions of the SteelSeries layer (same as perihub-core/src/apex/keys.rs).
   const FACTORY_FUNCTIONS: Record<number, KeyBinding> = {
@@ -225,23 +228,25 @@
   {#if busy}<div class="notice info">{busy}</div>{/if}
 
   {#if keymap}
-    <div class="board" style:width="{LAYOUT_WIDTH * UNIT}px" style:height="{LAYOUT_HEIGHT * UNIT}px">
-      {#each layoutCaps(prefs.layout) as cap (cap.usage)}
-        <button
-          class="cap {capClass(cap)}"
-          class:selected={selected === cap.usage}
-          disabled={!remappable(cap) || !!busy}
-          style:left="{cap.x * UNIT}px"
-          style:top="{cap.y * UNIT}px"
-          style:width="{cap.w * UNIT - 4}px"
-          style:height="{cap.h * UNIT - 4}px"
-          title={cap.locked ? "The firmware cannot remap this key" : keyLabel(cap.usage)}
-          onclick={() => (selected = cap.usage)}
-        >
-          <span>{keyLabel(cap.usage)}</span>
-          {#if capSub(cap)}<span class="sub">{capSub(cap)}</span>{/if}
-        </button>
-      {/each}
+    <div class="fit" bind:clientWidth={fitWidth}>
+      <div class="board" style:width="{LAYOUT_WIDTH * unit}px" style:height="{LAYOUT_HEIGHT * unit}px">
+        {#each layoutCaps(prefs.layout) as cap (cap.usage)}
+          <button
+            class="cap {capClass(cap)}"
+            class:selected={selected === cap.usage}
+            disabled={!remappable(cap) || !!busy}
+            style:left="{cap.x * unit}px"
+            style:top="{cap.y * unit}px"
+            style:width="{cap.w * unit - 4}px"
+            style:height="{cap.h * unit - 4}px"
+            title={cap.locked ? "The firmware cannot remap this key" : keyLabel(cap.usage)}
+            onclick={() => (selected = cap.usage)}
+          >
+            <span>{keyLabel(cap.usage)}</span>
+            {#if capSub(cap)}<span class="sub">{capSub(cap)}</span>{/if}
+          </button>
+        {/each}
+      </div>
     </div>
 
     <div class="row legend small muted">
@@ -344,6 +349,10 @@
     gap: 2px;
   }
 
+  .fit {
+    min-width: 0;
+  }
+
   .board {
     position: relative;
     padding: 12px;
@@ -365,8 +374,8 @@
     font-size: 11px;
     line-height: 1.1;
     border-radius: 6px;
-    background: #1d2029;
-    border: 1px solid #2c3140;
+    background: var(--panel-2);
+    border: 1px solid var(--line-strong);
     overflow: hidden;
   }
 
@@ -381,7 +390,7 @@
 
   .cap.draft {
     border-color: var(--warn);
-    background: #2a2412;
+    background: var(--warn-soft);
   }
 
   .cap.locked {
@@ -390,7 +399,7 @@
 
   .cap.selected {
     outline: 2px solid var(--accent);
-    background: #2a1a12;
+    background: var(--panel-3);
   }
 
   .legend {
@@ -407,8 +416,8 @@
   }
 
   .legend i.custom { border-color: var(--accent); }
-  .legend i.draft { border-color: var(--warn); background: #2a2412; }
-  .legend i.locked { opacity: 0.35; background: #1d2029; }
+  .legend i.draft { border-color: var(--warn); background: var(--warn-soft); }
+  .legend i.locked { opacity: 0.35; background: var(--panel-2); }
 
   .editor {
     gap: 28px;

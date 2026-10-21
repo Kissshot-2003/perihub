@@ -40,7 +40,7 @@
 </script>
 
 <div class="card col">
-  <h3>Macros run by PeriHub</h3>
+  <h2>Macros run by PeriHub</h2>
   <p class="muted small">
     They can repeat until you press the button again, type text and open websites or programs. They work while PeriHub
     is running, also in the tray. Mouse buttons and keyboard keys start one by sending a key of its own: F19, F24, then
@@ -131,10 +131,10 @@
   .warning {
     gap: 8px;
     padding: 12px 14px;
-    border: 1px solid #5a2630;
-    border-radius: 8px;
-    background: #2a1418;
-    font-size: 13px;
+    border: 1px solid rgba(255, 107, 120, 0.3);
+    border-left: 3px solid var(--bad);
+    border-radius: var(--radius-sm);
+    background: var(--bad-soft);
   }
 
   .warning ul {
@@ -155,6 +155,7 @@
 
   .running {
     color: var(--ok);
-    border-color: #1f4f3c;
+    background: var(--ok-soft);
+    border-color: rgba(60, 207, 145, 0.35);
   }
 </style>

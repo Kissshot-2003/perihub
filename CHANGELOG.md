@@ -5,6 +5,7 @@
 From the test of 0.4.1 on a real Windows PC, where the update from 0.3.0, autostart with a real login, the G HUB warning and software macros started by mouse buttons and keyboard keys worked.
 
 ### Changed
+- A clearer interface: larger, more readable descriptions; icons in the sidebar, which marks the page on screen; orange only for what matters (the main action, the selection, the value in use); "Unsaved changes" next to the button that saves them; a disabled Save button that no longer looks enabled; profile cards that fit; and the key map that fits the window down to its minimum size.
 - Reactive lighting lights the zone of the key pressed, not of the key it sends: SteelSeries + 1 sending F24 lights the zone of 1, and two swapped keys light their own zones. A key that two keys send lights its own zone.
 - The mouse page follows the mouse's buttons whenever it is visible, also without the focus. The level in use is marked in the DPI levels, and the current DPI is shown at the top right.
 - Windows: the log file moved to `%LOCALAPPDATA%\io.github.hexdump.perihub\logs`. Before it was in the install folder, which then stayed behind after uninstalling. The old log is moved there.

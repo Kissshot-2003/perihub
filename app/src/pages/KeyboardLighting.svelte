@@ -197,7 +197,7 @@
 
   <div class="card col">
     {#if usesZones}
-      <h3>Zone colors (left to right)</h3>
+      <h2>Zone colors <span class="muted small">left to right</span></h2>
       <div class="zones">
         {#each zones as _, i (i)}
           <label class="zone">
@@ -268,7 +268,7 @@
   </div>
 
   <div class="card col">
-    <h3>Saved lightings</h3>
+    <h2>Saved lightings</h2>
     <p class="muted small">Save the current lighting to use it in app profiles. Click a saved lighting to show it again.</p>
     {#if saved.length}
       <div class="row wrap">
@@ -307,9 +307,11 @@
     text-align: left;
   }
 
-  .kind.active {
+  .kind.active,
+  .kind.active:hover:not(:disabled) {
     border-color: var(--accent);
-    background: #2a1a12;
+    background: var(--panel-3);
+    box-shadow: inset 0 0 0 1px var(--accent);
   }
 
   .zones {

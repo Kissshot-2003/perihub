@@ -463,7 +463,8 @@
     display: grid;
     place-items: center;
     padding: 24px;
-    background: rgb(0 0 0 / 0.55);
+    background: rgb(0 0 0 / 0.6);
+    backdrop-filter: blur(3px);
   }
 
   .dialog {
@@ -471,10 +472,11 @@
     max-height: 100%;
     overflow-y: auto;
     gap: 14px;
-    padding: 22px;
-    border-radius: var(--radius);
+    padding: 24px;
+    border-radius: 14px;
     background: var(--panel);
-    border: 1px solid var(--line);
+    border: 1px solid var(--line-strong);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   }
 
   .tight {
