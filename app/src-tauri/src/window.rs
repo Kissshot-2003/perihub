@@ -33,6 +33,7 @@ pub fn show(app: &AppHandle, page: Option<&str>) {
 fn create(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     let config = app.config().app.windows.iter().find(|w| w.label == MAIN).expect("main window in tauri.conf.json");
     let window = WebviewWindowBuilder::from_config(app, config)?.build()?;
+    crate::autostart::restart_hidden();
     // Development only: PERIHUB_PAGE=mouse:buttons opens a page directly.
     #[cfg(debug_assertions)]
     if let Ok(page) = std::env::var("PERIHUB_PAGE") {

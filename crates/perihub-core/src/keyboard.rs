@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
-use crate::apex::input::KeyWatcher;
+use crate::apex::input::{KeyWatcher, KeyZones};
 use crate::apex::{Apex3Tkl, KeyBinding, Layer, MAX_BRIGHTNESS};
 use crate::config::{KeyboardConfig, write_backup};
 use crate::effects::{Frame, KeyboardLighting, NO_PRESSES};
@@ -51,6 +51,8 @@ pub struct KeyboardTask {
     keys_failed: Option<Instant>,
     /// Keys that start software macros which the key map sends (see [`macro_keys`]).
     macro_keys: Arc<Mutex<Vec<u8>>>,
+    /// Zone each key lights, from the key map.
+    key_zones: KeyZones,
 }
 
 /// Keys that start software macros ([`TRIGGER_KEYS`]) which the key map sends, on either layer.
@@ -81,11 +83,13 @@ impl KeyboardTask {
             keys: None,
             keys_failed: None,
             macro_keys: Arc::default(),
+            key_zones: KeyZones::default(),
         };
         task.dev.set_brightness(config.brightness.min(MAX_BRIGHTNESS))?;
-        // Which keys start software macros. The keyboard works without it.
+        // Which keys start software macros, and which zones remapped keys light. The keyboard works
+        // without it.
         match task.keymap() {
-            Ok(keymap) => *task.macro_keys.lock().unwrap() = macro_keys(&keymap),
+            Ok(keymap) => task.keymap_changed(&keymap),
             Err(error) => log::warn!("keyboard: key map not read: {error}"),
         }
         if let Err(error) = task.watch_keys() {
@@ -101,7 +105,8 @@ impl KeyboardTask {
         if self.lighting.fade().is_none() {
             self.keys = None;
         } else if self.keys.is_none() {
-            match KeyWatcher::start(self.key_interfaces.boot.as_ref(), self.key_interfaces.bitmap.as_ref()) {
+            let (boot, bitmap) = (self.key_interfaces.boot.as_ref(), self.key_interfaces.bitmap.as_ref());
+            match KeyWatcher::start(boot, bitmap, self.key_zones.clone()) {
                 Ok(watcher) => self.keys = Some(watcher),
                 Err(error) => {
                     self.keys_failed = Some(Instant::now());
@@ -160,8 +165,16 @@ impl KeyboardTask {
         write_backup("apex3tkl", "keymap", &[("keymap.json", serde_json::to_string_pretty(&before)?.as_bytes())])?;
         let [normal, steelseries] = self.dev.apply_changes(changes)?;
         let keymap = Keymap { normal, steelseries };
-        *self.macro_keys.lock().unwrap() = macro_keys(&keymap);
+        self.keymap_changed(&keymap);
         Ok(keymap)
+    }
+
+    fn keymap_changed(&mut self, keymap: &Keymap) {
+        *self.macro_keys.lock().unwrap() = macro_keys(keymap);
+        self.key_zones = KeyZones::from_keymap(&keymap.normal, &keymap.steelseries);
+        if let Some(keys) = &self.keys {
+            keys.set_zones(self.key_zones.clone());
+        }
     }
 
     /// Keys that start software macros which the key map sends, kept up to date.

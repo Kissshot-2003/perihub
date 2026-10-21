@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+From the test of 0.4.1 on a real Windows PC, where the update from 0.3.0, autostart with a real login, the G HUB warning and software macros started by mouse buttons and keyboard keys worked.
+
+### Changed
+- Reactive lighting lights the zone of the key pressed, not of the key it sends: SteelSeries + 1 sending F24 lights the zone of 1, and two swapped keys light their own zones. A key that two keys send lights its own zone.
+- The mouse page follows the mouse's buttons whenever it is visible, also without the focus. The level in use is marked in the DPI levels, and the current DPI is shown at the top right.
+- Windows: the log file moved to `%LOCALAPPDATA%\io.github.hexdump.perihub\logs`. Before it was in the install folder, which then stayed behind after uninstalling. The old log is moved there.
+
+### Fixed
+- Windows: with PeriHub open at sign-out, Windows opened it again at sign-in with its window, and autostart then brought the window to the front. Now autostart's launch never shows the window, and PeriHub asks Windows to reopen it in the tray. Not verified on Windows yet.
+- While another program, such as G HUB, controlled the mouse, the mouse page showed "Unsaved changes" with no profile selected. Saving was refused, so nothing was written.
+
 ## 0.4.1 — 2026-10-20
 
 ### Added

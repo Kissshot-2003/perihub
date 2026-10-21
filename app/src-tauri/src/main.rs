@@ -45,8 +45,13 @@ fn main() {
     let hidden_requested = std::env::args().any(|a| a == HIDDEN_ARG);
 
     tauri::Builder::default()
-        // Launching a second time brings the already open window to the front.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| window::show(app, None)))
+        // Launching a second time brings the already open window to the front, except autostart's
+        // launch, which comes after Windows has reopened a PeriHub left open at sign-out.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if !args.iter().any(|a| a == HIDDEN_ARG) {
+                window::show(app, None);
+            }
+        }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
@@ -62,6 +67,7 @@ fn main() {
                     autostart::quote_entry(app.handle());
                 }
             }
+            autostart::restart_hidden();
             let config = AppConfig::load();
             let handle = app.handle().clone();
             // The device listener starts before the app profiles exist: they are set right after.

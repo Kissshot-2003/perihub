@@ -46,7 +46,10 @@
 
   function adopt(next: MouseState, keepSelection = true) {
     mouse = next;
-    if (!keepSelection) selected = next.active_profile;
+    const exists = (number: number) => next.profiles.some((p) => p.number === number);
+    // While another program controls the mouse no profile is active (0): the selection stays.
+    if (!keepSelection && exists(next.active_profile)) selected = next.active_profile;
+    if (!exists(selected)) selected = next.profiles[0].number;
     draft = clone(next.profiles.find((p) => p.number === selected)!.settings);
   }
 
@@ -121,9 +124,9 @@
     await revertPreview();
   }
 
-  // The mouse's own buttons change the active profile and DPI: follow them while this page is in front.
+  // The mouse's own buttons change the active profile and DPI: follow them while this page is visible.
   const livePoll = setInterval(async () => {
-    if (!mouse || busy || document.hidden || !document.hasFocus()) return;
+    if (!mouse || busy || document.hidden) return;
     try {
       const live = await api.mouseLive();
       if (!mouse || busy) return;
@@ -149,16 +152,23 @@
   });
 </script>
 
-<header class="col tight">
-  <h1>{info ? `Logitech ${info.model}` : "Logitech mouse"}</h1>
-  <span class="muted small">
-    {#if info}
-      Firmware {info.firmware.map((f) => `${f.name} ${f.version}`).join(" · ")}
-      {#if mouse}· current DPI {mouse.current_dpi}{/if}
-    {:else}
-      Not connected
-    {/if}
-  </span>
+<header class="row">
+  <div class="col tight grow">
+    <h1>{info ? `Logitech ${info.model}` : "Logitech mouse"}</h1>
+    <span class="muted small">
+      {#if info}
+        Firmware {info.firmware.map((f) => `${f.name} ${f.version}`).join(" · ")}
+      {:else}
+        Not connected
+      {/if}
+    </span>
+  </div>
+  {#if info && mouse}
+    <div class="dpi-now" title="The DPI the mouse is using right now">
+      <strong>{mouse.current_dpi}</strong>
+      <span class="small muted">DPI now</span>
+    </div>
+  {/if}
 </header>
 
 {#if connectError && !info}<div class="notice error">{connectError}</div>{/if}
@@ -229,7 +239,8 @@
   <!-- Unverified models are read-only: every control in the editor is disabled. -->
   <fieldset disabled={!info.verified}>
     {#if tab === "performance"}
-      <MousePerformance {info} bind:settings={draft} onpreview={() => (previewing = true)} />
+      <MousePerformance {info} bind:settings={draft} onpreview={() => (previewing = true)}
+        activeLevel={selected === mouse.active_profile ? mouse.active_dpi_index : null} />
     {:else if tab === "buttons"}
       <MouseButtons {info} bind:settings={draft} profiles={mouse.profiles} profileNumber={selected}
         macroSpace={mouse.macro_space} />
@@ -260,7 +271,22 @@
 <style>
   header {
     margin-bottom: 18px;
-    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .dpi-now {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+
+  .dpi-now strong {
+    font-size: 20px;
+    color: var(--accent);
   }
 
   .tight {

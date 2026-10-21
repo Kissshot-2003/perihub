@@ -7,9 +7,11 @@
     info: MouseInfo;
     settings: ProfileSettings;
     onpreview: () => void;
+    /** Level the mouse is using now, if this profile is the active one. */
+    activeLevel?: number | null;
   }
 
-  let { info, settings = $bindable(), onpreview }: Props = $props();
+  let { info, settings = $bindable(), onpreview, activeLevel = null }: Props = $props();
 
   const caps = $derived(info.dpi);
   const MAX_LEVELS = 5;
@@ -66,7 +68,10 @@
       <span class="small muted center">Sniper</span>
       <span></span>
       {#each settings.dpi_levels as dpi, i (i)}
-        <strong>{i + 1}</strong>
+        <span class="level" class:current={i === activeLevel}>
+          <strong>{i + 1}</strong>
+          {#if i === activeLevel}<span class="small">now</span>{/if}
+        </span>
         <input
           type="number"
           min={caps.min}
@@ -119,9 +124,19 @@
 
   .levels {
     display: grid;
-    grid-template-columns: 50px 110px 1fr 90px 70px 40px;
+    grid-template-columns: 70px 110px 1fr 90px 70px 40px;
     align-items: center;
     gap: 10px 14px;
+  }
+
+  .level {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .level.current {
+    color: var(--accent);
   }
 
   .levels input[type="number"] {

@@ -8,9 +8,29 @@ use std::path::PathBuf;
 
 const MAX_SIZE: u64 = 1024 * 1024;
 
-/// Linux: ~/.local/state/perihub. Windows: %LOCALAPPDATA%\perihub.
+/// Linux: ~/.local/state/perihub.
+#[cfg(not(windows))]
 pub fn dir() -> PathBuf {
     dirs::state_dir().or_else(dirs::data_local_dir).unwrap_or_else(std::env::temp_dir).join("perihub")
+}
+
+/// Windows: %LOCALAPPDATA%\io.github.hexdump.perihub\logs, next to the web view's data (the folder
+/// is named after the identifier in tauri.conf.json), which the uninstaller removes if asked to.
+/// 0.4.1 and earlier wrote to %LOCALAPPDATA%\perihub, which is the install folder.
+#[cfg(windows)]
+pub fn dir() -> PathBuf {
+    dirs::data_local_dir().unwrap_or_else(std::env::temp_dir).join("io.github.hexdump.perihub").join("logs")
+}
+
+/// Moves the log of 0.4.1 and earlier out of the install folder, which it kept from being removed.
+#[cfg(windows)]
+fn move_old_log(dir: &std::path::Path) {
+    let Some(old) = dirs::data_local_dir().map(|d| d.join("perihub")) else { return };
+    for name in ["perihub.log", "perihub.old.log"] {
+        if old.join(name).exists() && !dir.join(name).exists() {
+            let _ = fs::rename(old.join(name), dir.join(name));
+        }
+    }
 }
 
 /// Writes every message to the terminal (if there is one) and to the log file.
@@ -22,6 +42,13 @@ pub struct LogWriter {
 impl LogWriter {
     pub fn open() -> Self {
         let mut writer = Self { file: None, size: 0 };
+        #[cfg(windows)]
+        {
+            let dir = dir();
+            if fs::create_dir_all(&dir).is_ok() {
+                move_old_log(&dir);
+            }
+        }
         writer.reopen();
         writer
     }

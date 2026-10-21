@@ -19,8 +19,8 @@ use std::time::{Duration, Instant};
 #[cfg(not(windows))]
 use hidapi::{HidApi, HidDevice};
 
-use super::ZONES;
 use super::keys::zone_of;
+use super::{KeyBinding, Layer, ZONES};
 use crate::error::Result;
 
 /// Raw Input device names contain the USB ids, e.g. `\\?\HID#VID_1038&PID_1622&MI_00#…`.
@@ -92,18 +92,66 @@ impl HeldKeys {
     }
 }
 
-/// What the reading threads share: the last press in each zone, and the keys held on each interface.
+/// Lighting zone of each key the keyboard sends. A remapped key sends another key, so the zone
+/// comes from the key map: the zone of the one key that sends it on the normal layer, or else on
+/// the SteelSeries layer (SteelSeries + 1 sending F24, for example). A key that several keys send
+/// lights its own zone.
+#[derive(Clone)]
+pub struct KeyZones([Option<usize>; 256]);
+
+impl Default for KeyZones {
+    /// Without the key map: the zone of the key sent.
+    fn default() -> Self {
+        Self(std::array::from_fn(|usage| zone_of(usage as u8)))
+    }
+}
+
+impl KeyZones {
+    pub fn from_keymap(normal: &Layer, steelseries: &Layer) -> Self {
+        let mut zones = Self::default();
+        let mut decided = [false; 256];
+        for layer in [normal, steelseries] {
+            // How many keys of the board send each key, and the zone of the last one.
+            let mut senders = [(0u8, 0usize); 256];
+            for (&source, binding) in layer {
+                if let (KeyBinding::Key { usage }, Some(zone)) = (binding, zone_of(source)) {
+                    let entry = &mut senders[usize::from(*usage)];
+                    *entry = (entry.0.saturating_add(1), zone);
+                }
+            }
+            for (usage, (count, zone)) in senders.into_iter().enumerate() {
+                if count > 0 && !decided[usage] {
+                    decided[usage] = true;
+                    if count == 1 {
+                        zones.0[usage] = Some(zone);
+                    }
+                }
+            }
+        }
+        zones
+    }
+
+    fn of(&self, usage: u8) -> Option<usize> {
+        self.0[usize::from(usage)]
+    }
+}
+
+/// What the reading threads share: the last press in each zone, the keys held on each interface
+/// and the zone of each key.
 #[derive(Default)]
 struct Shared {
     hits: [Option<Instant>; ZONES],
     held: HeldKeys,
+    zones: KeyZones,
 }
 
 impl Shared {
     fn update(&mut self, interface: usize, now: Pressed) {
         let at = Instant::now();
-        for zone in self.held.update(interface, now).into_iter().filter_map(zone_of) {
-            self.hits[zone] = Some(at);
+        for usage in self.held.update(interface, now) {
+            if let Some(zone) = self.zones.of(usage) {
+                self.hits[zone] = Some(at);
+            }
         }
     }
 }
@@ -119,8 +167,8 @@ pub struct KeyWatcher {
 impl KeyWatcher {
     /// Linux: opens the keyboard's key interfaces, `boot` (interface 0) and `bitmap` (interface 2).
     /// Windows: receives the keyboard's keys through Raw Input (the paths are not used).
-    pub fn start(boot: Option<&CString>, bitmap: Option<&CString>) -> Result<Self> {
-        let shared = Arc::<Mutex<Shared>>::default();
+    pub fn start(boot: Option<&CString>, bitmap: Option<&CString>, zones: KeyZones) -> Result<Self> {
+        let shared = Arc::new(Mutex::new(Shared { zones, ..Shared::default() }));
         let stop = Arc::new(AtomicBool::new(false));
         #[cfg(windows)]
         {
@@ -154,6 +202,11 @@ impl KeyWatcher {
             }
             Ok(Self { shared, stop })
         }
+    }
+
+    /// After a change to the key map.
+    pub fn set_zones(&self, zones: KeyZones) {
+        self.shared.lock().unwrap().zones = zones;
     }
 
     /// Time since the last press in each zone.
@@ -276,6 +329,35 @@ mod tests {
         shared.update(1, bitmap);
         shared.update(0, Pressed::default()); // …and drops it from the boot report
         assert_eq!(shared.hits[zone_of(0x04).unwrap()], first);
+    }
+
+    #[test]
+    fn remapped_keys_light_the_zone_of_the_key_pressed() {
+        let factory = |layer| {
+            (0..=255u8)
+                .filter(|&u| super::super::keys::is_mappable_slot(u))
+                .map(|u| (u, KeyBinding::factory(layer, u)))
+                .collect::<Layer>()
+        };
+        let (mut normal, mut steelseries) = (factory(0), factory(1));
+        // Factory key map: every key lights its own zone.
+        let zones = KeyZones::from_keymap(&normal, &steelseries);
+        assert!((0..=255u8).all(|u| zones.of(u) == zone_of(u)));
+
+        // SteelSeries + 1 sends F24, which has no zone of its own.
+        steelseries.insert(0x1E, KeyBinding::Key { usage: 0x73 });
+        // Caps Lock and Enter swapped.
+        normal.insert(0x39, KeyBinding::Key { usage: 0x28 });
+        normal.insert(0x28, KeyBinding::Key { usage: 0x39 });
+        // Right arrow sends A too: A could come from either key.
+        normal.insert(0x4F, KeyBinding::Key { usage: 0x04 });
+        let zones = KeyZones::from_keymap(&normal, &steelseries);
+        assert_eq!(zones.of(0x73), zone_of(0x1E));
+        assert_eq!(zones.of(0x28), zone_of(0x39));
+        assert_eq!(zones.of(0x39), zone_of(0x28));
+        assert_eq!(zones.of(0x04), zone_of(0x04));
+        assert_ne!(zone_of(0x1E), None);
+        assert_ne!(zone_of(0x28), zone_of(0x39));
     }
 
     #[test]
