@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Windows: installed with Scoop, PeriHub leaves updates to Scoop (`scoop update perihub`). It does not look for new versions or offer to install them: its installer would add a second copy outside Scoop.
+
 ## 0.4.2 — 2026-10-21
 
 From the test of 0.4.1 on a real Windows PC, where the update from 0.3.0, autostart with a real login, the G HUB warning and software macros started by mouse buttons and keyboard keys worked.

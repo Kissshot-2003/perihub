@@ -278,6 +278,9 @@ pub struct AppSettings {
     /// This build can update itself (Windows): read only.
     #[serde(default)]
     updates_supported: bool,
+    /// The package manager that installed PeriHub and updates it, such as Scoop: read only.
+    #[serde(default)]
+    package_manager: Option<String>,
     /// Folder of the log file: read only.
     #[serde(default)]
     log_dir: String,
@@ -290,7 +293,8 @@ pub fn app_get_settings(app: AppHandle, state: State<'_, AppState>) -> AppSettin
         start_hidden: config.start_hidden,
         autostart: app.autolaunch().is_enabled().unwrap_or(false),
         check_updates: config.check_updates,
-        updates_supported: crate::updates::SUPPORTED,
+        updates_supported: crate::updates::supported(),
+        package_manager: crate::updates::package_manager().map(String::from),
         log_dir: crate::logfile::dir().display().to_string(),
     }
 }

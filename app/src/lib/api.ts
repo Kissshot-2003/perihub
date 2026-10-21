@@ -247,6 +247,8 @@ export interface AppSettings {
   check_updates: boolean;
   /** This build can update itself (Windows). */
   updates_supported: boolean;
+  /** The package manager that installed PeriHub and updates it, such as Scoop. */
+  package_manager: string | null;
   /** Folder of the log file. */
   log_dir: string;
 }

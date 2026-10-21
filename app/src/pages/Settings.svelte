@@ -54,7 +54,12 @@
     </p>
   </div>
 
-  {#if settings?.updates_supported}
+  {#if settings?.package_manager === "Scoop"}
+    <div class="card col">
+      <h2>Updates</h2>
+      <p>PeriHub was installed with Scoop, which also updates it: <code>scoop update perihub</code>.</p>
+    </div>
+  {:else if settings?.updates_supported}
     <div class="card col">
       <h2>Updates</h2>
       <label class="row">
