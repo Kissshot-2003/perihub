@@ -84,7 +84,7 @@ pub fn restart_hidden() {}
 pub fn is_enabled(app: &AppHandle) -> bool {
     use windows_registry::CURRENT_USER;
 
-    let name = app.package_info().name;
+    let name = &app.package_info().name;
     let Ok(run) = CURRENT_USER.open(run_path()) else {
         return false;
     };
@@ -144,16 +144,15 @@ pub fn startup(_app: &AppHandle) {}
 fn move_from_local_machine(app: &AppHandle) {
     use windows_registry::{CURRENT_USER, LOCAL_MACHINE};
 
-    let name = app.package_info().name;
+    let name = &app.package_info().name;
     let Some(value) = command_line() else { return };
     let Ok(run) = LOCAL_MACHINE.options().read().open(run_path()) else { return };
     let Ok(entry) = run.get_string(name) else { return };
     // Not a path of our own exe, for example written for another install location: leave it.
-    let Some(exe) = std::env::current_exe() else { return };
+    let Some(exe) = std::env::current_exe().ok() else { return };
     let exe = exe.display().to_string();
     let entry = entry.replace('"', "");
-    let ours = entry.as_bytes().len() >= exe.as_bytes().len()
-        && entry.as_bytes()[..exe.as_bytes().len()].eq_ignore_ascii_case(exe.as_bytes());
+    let ours = entry.get(..exe.len()).is_some_and(|start| start.eq_ignore_ascii_case(&exe));
     if !ours {
         return;
     }
@@ -188,7 +187,7 @@ fn move_from_local_machine(app: &AppHandle) {
 fn quote_entry(app: &AppHandle) {
     use windows_registry::CURRENT_USER;
 
-    let name = app.package_info().name;
+    let name = &app.package_info().name;
     let Some(value) = command_line() else { return };
     let Ok(key) = CURRENT_USER.options().read().write().open(run_path()) else { return };
     // auto-launch only checks that the entry exists, so a wrong value still counts as enabled.
@@ -206,7 +205,7 @@ fn quote_entry(_app: &AppHandle) {}
 fn enable(app: &AppHandle) -> Result<(), String> {
     use windows_registry::{CURRENT_USER, Type};
 
-    let name = app.package_info().name;
+    let name = &app.package_info().name;
     let Some(value) = command_line() else { return Err("could not find PeriHub's own path".to_string()) };
     // create opens the key when it already exists.
     CURRENT_USER.create(run_path()).and_then(|key| key.set_string(name, &value)).map_err(|error| format!("{error}"))?;
@@ -224,7 +223,7 @@ fn enable(app: &AppHandle) -> Result<(), String> {
 fn disable(app: &AppHandle) -> Result<(), String> {
     use windows_registry::CURRENT_USER;
 
-    let name = app.package_info().name;
+    let name = &app.package_info().name;
     // Like auto-launch, only the Run value is removed: the Task Manager value only matters
     // while the Run entry exists.
     match CURRENT_USER.options().write().open(run_path()).and_then(|key| key.remove_value(name)) {
