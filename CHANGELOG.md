@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- Windows: the autostart entry goes to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` instead of `HKLM`, where 0.4.2 and earlier could write it machine-wide: it would also start PeriHub for the other accounts on the PC with a path to this user's folder. Entries left in HKLM are moved to HKCU when PeriHub starts; when Windows does not let us delete the HKLM entry, it stays, and PeriHub logs it.
+
 ### Changed
 - Windows: installed with Scoop, PeriHub leaves updates to Scoop (`scoop update perihub`). It does not look for new versions or offer to install them: its installer would add a second copy outside Scoop.
 
