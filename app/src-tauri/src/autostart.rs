@@ -4,7 +4,9 @@
 //! and manages it itself. auto-launch 0.6 (through tauri-plugin-autostart) prefers `HKLM` in its
 //! `Dynamic` mode and succeeds there whenever it can write, so 0.4.2 left machine-wide entries:
 //! they would also start PeriHub for other accounts, pointing at this user's folder, which does
-//! not exist for them. Entries that those versions left in `HKLM` are moved to `HKCU` at startup.
+//! not exist for them. Entries that those versions left in `HKLM` are moved to `HKCU` at startup,
+//! or deleted when Task Manager had turned them off; one that Windows does not let us delete still
+//! starts PeriHub, so it counts as enabled and turning autostart off says how to remove it.
 //!
 //! The Run value is written with quotes around the exe path: without them, with a space in the
 //! path like `C:\Users\Mario Rossi\…`, Windows may split the command at the first space. The
@@ -19,14 +21,10 @@ const E_ACCESSDENIED: windows_result::HRESULT = windows_result::HRESULT::from_wi
 const E_FILENOTFOUND: windows_result::HRESULT = windows_result::HRESULT::from_win32(0x80070002_u32);
 
 #[cfg(windows)]
-fn run_path() -> &'static str {
-    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-}
+const RUN_PATH: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
 
 #[cfg(windows)]
-fn task_manager_path() -> &'static str {
-    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
-}
+const TASK_MANAGER_PATH: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
 
 /// The command line the entry runs, for example `"C:\PeriHub\perihub.exe" --hidden`.
 #[cfg(windows)]
@@ -85,21 +83,46 @@ pub fn is_enabled(app: &AppHandle) -> bool {
     use windows_registry::CURRENT_USER;
 
     let name = &app.package_info().name;
-    let Ok(run) = CURRENT_USER.open(run_path()) else {
-        return false;
-    };
-    if run.get_string(name).is_err() {
+    let user_entry = CURRENT_USER.open(RUN_PATH).is_ok_and(|run| run.get_string(name).is_ok());
+    if user_entry {
+        return match CURRENT_USER.open(TASK_MANAGER_PATH).and_then(|key| key.get_value(name)) {
+            Ok(value) => {
+                // The last 8 bytes hold the time the entry was disabled: when they are not all
+                // zero, Task Manager does not start the entry.
+                value.len() < 8 || value.iter().rev().take(8).all(|&byte| byte == 0)
+            }
+            // Without a value there, the entry counts as enabled.
+            Err(_) => true,
+        };
+    }
+    // An HKLM entry that Windows does not let this user delete still starts PeriHub, so it counts
+    // as enabled; `disable` then says how to remove it.
+    machine_entry(app).is_some()
+}
+
+/// The Run entry under `HKLM` when it points at this copy of PeriHub: 0.4.2 and earlier wrote it
+/// there, and Windows does not always let us delete it.
+#[cfg(windows)]
+fn machine_entry(app: &AppHandle) -> Option<String> {
+    use windows_registry::LOCAL_MACHINE;
+
+    let name = &app.package_info().name;
+    let entry = LOCAL_MACHINE.options().read().open(RUN_PATH).ok()?.get_string(name).ok()?;
+    is_our_entry(&entry).then_some(entry)
+}
+
+/// Whether a Run value starts with this copy of PeriHub: the exe path, then nothing or a space
+/// with the arguments. One that starts the same way, like `perihub.exe.old`, is another program.
+#[cfg(windows)]
+fn is_our_entry(entry: &str) -> bool {
+    let Ok(exe) = std::env::current_exe() else { return false };
+    let entry = entry.replace('"', "").to_lowercase();
+    let exe = exe.display().to_string().to_lowercase();
+    if !entry.starts_with(&exe) {
         return false;
     }
-    match CURRENT_USER.open(task_manager_path()).and_then(|key| key.get_value(name)) {
-        Ok(value) => {
-            // The last 8 bytes hold the time the entry was enabled: when they are not all zero,
-            // Task Manager does not start the entry.
-            value.len() < 8 || value.iter().rev().take(8).all(|&byte| byte == 0)
-        }
-        // Without a value there, the entry counts as enabled.
-        Err(_) => true,
-    }
+    let rest = &entry[exe.len()..];
+    rest.is_empty() || rest.starts_with(' ')
 }
 
 #[cfg(not(windows))]
@@ -138,40 +161,42 @@ pub fn startup(app: &AppHandle) {
 pub fn startup(_app: &AppHandle) {}
 
 /// Moves the Run entry that 0.4.2 and earlier wrote under `HKLM` back to `HKCU`, where a
-/// per-user app belongs. Only an entry pointing at PeriHub's own exe is moved. It stays in
-/// `HKLM` when Windows does not let us delete it, which PeriHub logs.
+/// per-user app belongs. Only an entry pointing at PeriHub's own exe is moved, and one that Task
+/// Manager had turned off is only deleted. It stays in `HKLM` when Windows does not let us delete
+/// it, which PeriHub logs.
 #[cfg(windows)]
 fn move_from_local_machine(app: &AppHandle) {
     use windows_registry::{CURRENT_USER, LOCAL_MACHINE};
 
     let name = &app.package_info().name;
-    let Some(value) = command_line() else { return };
-    let Ok(run) = LOCAL_MACHINE.options().read().open(run_path()) else { return };
-    let Ok(entry) = run.get_string(name) else { return };
-    // Not a path of our own exe, for example written for another install location: leave it.
-    let Some(exe) = std::env::current_exe().ok() else { return };
-    let exe = exe.display().to_string();
-    let entry = entry.replace('"', "");
-    let ours = entry.get(..exe.len()).is_some_and(|start| start.eq_ignore_ascii_case(&exe));
-    if !ours {
+    if machine_entry(app).is_none() {
         return;
     }
-
-    // The entry stays enabled for this user even when Windows does not let us delete the
-    // machine-wide one.
-    if let Err(error) = CURRENT_USER.create(run_path()).and_then(|key| key.set_string(name, &value)) {
+    let Some(value) = command_line() else { return };
+    let mut options = LOCAL_MACHINE.options();
+    let machine = options.read().write();
+    // A Task Manager value that holds a time turns the entry off: moving it would turn it on.
+    let disabled = machine
+        .open(TASK_MANAGER_PATH)
+        .and_then(|key| key.get_value(name))
+        .is_ok_and(|value| value.len() >= 8 && value.iter().rev().take(8).any(|&byte| byte != 0));
+    if !disabled && let Err(error) = CURRENT_USER.create(RUN_PATH).and_then(|key| key.set_string(name, &value)) {
         log::warn!("could not write the HKCU autostart entry that replaces the HKLM one: {error}");
         return;
     }
-    match LOCAL_MACHINE.options().read().write().open(run_path()).and_then(|key| key.remove_value(name)) {
+    match machine.open(RUN_PATH).and_then(|key| key.remove_value(name)) {
         Ok(_) => {
-            log::info!("moved the autostart entry from HKLM to HKCU");
+            if disabled {
+                log::info!("removed the HKLM autostart entry that Task Manager had turned off");
+            } else {
+                log::info!("moved the autostart entry from HKLM to HKCU");
+            }
             // The Task Manager value auto-launch wrote for the HKLM entry would stay behind.
-            if let Ok(key) = LOCAL_MACHINE.options().read().write().open(task_manager_path())
+            if let Ok(key) = machine.open(TASK_MANAGER_PATH)
                 && let Err(error) = key.remove_value(name)
                 && error.code() != E_FILENOTFOUND
             {
-                log::warn!("could not remove the HKLM Task Manager value of the moved entry: {error}");
+                log::warn!("could not remove the HKLM Task Manager value of the removed entry: {error}");
             }
         }
         Err(error) if error.code() == E_ACCESSDENIED => {
@@ -189,7 +214,7 @@ fn quote_entry(app: &AppHandle) {
 
     let name = &app.package_info().name;
     let Some(value) = command_line() else { return };
-    let Ok(key) = CURRENT_USER.options().read().write().open(run_path()) else { return };
+    let Ok(key) = CURRENT_USER.options().read().write().open(RUN_PATH) else { return };
     // auto-launch only checks that the entry exists, so a wrong value still counts as enabled.
     if key.get_string(name).is_ok_and(|current| current != value)
         && let Err(error) = key.set_string(name, &value)
@@ -198,9 +223,6 @@ fn quote_entry(app: &AppHandle) {
     }
 }
 
-#[cfg(not(windows))]
-fn quote_entry(_app: &AppHandle) {}
-
 #[cfg(windows)]
 fn enable(app: &AppHandle) -> Result<(), String> {
     use windows_registry::{CURRENT_USER, Type};
@@ -208,8 +230,8 @@ fn enable(app: &AppHandle) -> Result<(), String> {
     let name = &app.package_info().name;
     let Some(value) = command_line() else { return Err("could not find PeriHub's own path".to_string()) };
     // create opens the key when it already exists.
-    CURRENT_USER.create(run_path()).and_then(|key| key.set_string(name, &value)).map_err(|error| format!("{error}"))?;
-    match CURRENT_USER.options().write().open(task_manager_path()) {
+    CURRENT_USER.create(RUN_PATH).and_then(|key| key.set_string(name, &value)).map_err(|error| format!("{error}"))?;
+    match CURRENT_USER.options().write().open(TASK_MANAGER_PATH) {
         Ok(key) => {
             key.set_bytes(name, Type::Bytes, &TASK_MANAGER_ENABLED).map_err(|error| format!("{error}"))?;
         }
@@ -221,14 +243,36 @@ fn enable(app: &AppHandle) -> Result<(), String> {
 
 #[cfg(windows)]
 fn disable(app: &AppHandle) -> Result<(), String> {
-    use windows_registry::CURRENT_USER;
+    use windows_registry::{CURRENT_USER, LOCAL_MACHINE};
 
     let name = &app.package_info().name;
     // Like auto-launch, only the Run value is removed: the Task Manager value only matters
     // while the Run entry exists.
-    match CURRENT_USER.options().write().open(run_path()).and_then(|key| key.remove_value(name)) {
-        Ok(_) => Ok(()),
-        Err(error) if error.code() == E_FILENOTFOUND => Ok(()),
-        Err(error) => Err(format!("{error}")),
+    match CURRENT_USER.options().write().open(RUN_PATH).and_then(|key| key.remove_value(name)) {
+        Ok(_) => {}
+        Err(error) if error.code() == E_FILENOTFOUND => {}
+        Err(error) => return Err(format!("{error}")),
     }
+    if machine_entry(app).is_none() {
+        return Ok(());
+    }
+    // The entry under HKLM still starts PeriHub, so saying it is off would be wrong.
+    match LOCAL_MACHINE.options().read().write().open(RUN_PATH).and_then(|key| key.remove_value(name)) {
+        Ok(_) => {}
+        Err(error) if error.code() == E_FILENOTFOUND => return Ok(()),
+        Err(error) if error.code() == E_ACCESSDENIED => {
+            return Err(
+                "autostart is set for all accounts in HKEY_LOCAL_MACHINE and Windows does not let this account remove it. Start PeriHub once as administrator, which moves the entry to this account, or remove it in Task Manager."
+                    .to_string(),
+            );
+        }
+        Err(error) => return Err(format!("{error}")),
+    }
+    if let Ok(key) = LOCAL_MACHINE.options().read().write().open(TASK_MANAGER_PATH)
+        && let Err(error) = key.remove_value(name)
+        && error.code() != E_FILENOTFOUND
+    {
+        log::warn!("could not remove the HKLM Task Manager value of the removed entry: {error}");
+    }
+    Ok(())
 }

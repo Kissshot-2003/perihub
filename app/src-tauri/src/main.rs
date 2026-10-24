@@ -59,8 +59,7 @@ fn main() {
             Some(vec![HIDDEN_ARG]),
         ))
         .setup(move |app| {
-            // Autostart fix: the HKLM entry goes to HKCU, old entries get quoted (see autostart.rs).
-            #[cfg(windows)]
+            // Autostart: the HKLM entry goes to HKCU, old entries get quoted (see autostart.rs).
             autostart::startup(app.handle());
             autostart::restart_hidden();
             let config = AppConfig::load();
