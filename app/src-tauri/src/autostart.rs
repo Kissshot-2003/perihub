@@ -38,6 +38,25 @@ fn command_line() -> Option<String> {
 #[cfg(windows)]
 const TASK_MANAGER_ENABLED: [u8; 12] = [0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
+/// What Task Manager's value for a Run entry says about it: the first byte is the state, 2 or 6
+/// while the entry starts and 3 or 7 once Task Manager turned it off. The bytes after it hold a
+/// time, which says nothing about the state, so read the first byte and not the tail.
+#[cfg(windows)]
+fn task_manager_state(value: &[u8]) -> Option<bool> {
+    match value.first()? {
+        0x02 | 0x06 => Some(true),
+        0x03 | 0x07 => Some(false),
+        _ => None,
+    }
+}
+
+/// Whether Task Manager had turned the entry `name` under `key` off. A value that is missing, or
+/// one whose state this does not know, counts as enabled, which is how Task Manager shows it.
+#[cfg(windows)]
+fn task_manager_disabled(key: &windows_registry::Key, name: &str) -> bool {
+    key.get_value(name).ok().and_then(|value| task_manager_state(&value)) == Some(false)
+}
+
 /// Windows reopens the apps that were open at sign-out ("Restart apps" in the sign-in options).
 /// On Windows 11 with 0.4.1 PeriHub came back without arguments, so with its window, before
 /// autostart started it hidden. Registering the restart with `--hidden` makes it come back in the
@@ -85,15 +104,9 @@ pub fn is_enabled(app: &AppHandle) -> bool {
     let name = &app.package_info().name;
     let user_entry = CURRENT_USER.open(RUN_PATH).is_ok_and(|run| run.get_string(name).is_ok());
     if user_entry {
-        return match CURRENT_USER.open(TASK_MANAGER_PATH).and_then(|key| key.get_value(name)) {
-            Ok(value) => {
-                // The last 8 bytes hold the time the entry was disabled: when they are not all
-                // zero, Task Manager does not start the entry.
-                value.len() < 8 || value.iter().rev().take(8).all(|&byte| byte == 0)
-            }
-            // Without a value there, the entry counts as enabled.
-            Err(_) => true,
-        };
+        // Without a value there, or with one whose state this does not know, the entry counts as
+        // enabled, which is how Task Manager shows it.
+        return !CURRENT_USER.open(TASK_MANAGER_PATH).is_ok_and(|key| task_manager_disabled(&key, name));
     }
     // An HKLM entry that Windows does not let this user delete still starts PeriHub, so it counts
     // as enabled; `disable` then says how to remove it.
@@ -163,7 +176,7 @@ pub fn startup(_app: &AppHandle) {}
 /// Moves the Run entry that 0.4.2 and earlier wrote under `HKLM` back to `HKCU`, where a
 /// per-user app belongs. Only an entry pointing at PeriHub's own exe is moved, and one that Task
 /// Manager had turned off is only deleted. It stays in `HKLM` when Windows does not let us delete
-/// it, which PeriHub logs.
+/// it, and then no `HKCU` copy is written either, which PeriHub logs.
 #[cfg(windows)]
 fn move_from_local_machine(app: &AppHandle) {
     use windows_registry::{CURRENT_USER, LOCAL_MACHINE};
@@ -176,20 +189,21 @@ fn move_from_local_machine(app: &AppHandle) {
     let mut options = LOCAL_MACHINE.options();
     let machine = options.read().write();
     // A Task Manager value that holds a time turns the entry off: moving it would turn it on.
-    let disabled = machine
-        .open(TASK_MANAGER_PATH)
-        .and_then(|key| key.get_value(name))
-        .is_ok_and(|value| value.len() >= 8 && value.iter().rev().take(8).any(|&byte| byte != 0));
-    if !disabled && let Err(error) = CURRENT_USER.create(RUN_PATH).and_then(|key| key.set_string(name, &value)) {
-        log::warn!("could not write the HKCU autostart entry that replaces the HKLM one: {error}");
-        return;
-    }
+    let disabled = machine.open(TASK_MANAGER_PATH).is_ok_and(|key| task_manager_disabled(&key, name));
     match machine.open(RUN_PATH).and_then(|key| key.remove_value(name)) {
         Ok(_) => {
             if disabled {
                 log::info!("removed the HKLM autostart entry that Task Manager had turned off");
             } else {
-                log::info!("moved the autostart entry from HKLM to HKCU");
+                // The HKCU entry is written only once the HKLM one is gone. Writing it first
+                // leaves both behind when Windows refuses the delete, and this copy would be
+                // written again at every start, also after the user turned autostart off.
+                match CURRENT_USER.create(RUN_PATH).and_then(|key| key.set_string(name, &value)) {
+                    Ok(_) => log::info!("moved the autostart entry from HKLM to HKCU"),
+                    Err(error) => log::warn!(
+                        "could not write the HKCU autostart entry that replaces the removed HKLM one: {error}"
+                    ),
+                }
             }
             // The Task Manager value auto-launch wrote for the HKLM entry would stay behind.
             if let Ok(key) = machine.open(TASK_MANAGER_PATH)
@@ -200,7 +214,7 @@ fn move_from_local_machine(app: &AppHandle) {
             }
         }
         Err(error) if error.code() == E_ACCESSDENIED => {
-            log::warn!("autostart entry left in HKLM: not allowed to delete it");
+            log::warn!("autostart entry left in HKLM: not allowed to delete it, so no HKCU entry was written");
         }
         Err(error) => log::warn!("could not delete the HKLM autostart entry: {error}"),
     }
@@ -262,7 +276,7 @@ fn disable(app: &AppHandle) -> Result<(), String> {
         Err(error) if error.code() == E_FILENOTFOUND => return Ok(()),
         Err(error) if error.code() == E_ACCESSDENIED => {
             return Err(
-                "autostart is set for all accounts in HKEY_LOCAL_MACHINE and Windows does not let this account remove it. Start PeriHub once as administrator, which moves the entry to this account, or remove it in Task Manager."
+                "autostart is set for all accounts in HKEY_LOCAL_MACHINE and Windows does not let this account remove it. Quit PeriHub from the tray, then start it once as administrator, signed in as this same account, which moves the entry here. Otherwise remove it in Task Manager."
                     .to_string(),
             );
         }
